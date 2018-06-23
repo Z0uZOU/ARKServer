@@ -24,7 +24,7 @@ if [[ ! -d "$HOME/.config/argos/arkserver" ]]; then
 fi
 
 #### Récupération des versions (locale et distante)
-script_github="https://raw.githubusercontent.com/Z0uZOU/Convert2HDLight/master/Argos/convert2hdlight.c.1s.sh"
+script_github="https://raw.githubusercontent.com/Z0uZOU/ARK_Server/master/arkserver.c.1m.sh"
 local_version=$version
 github_version=`wget -O- -q "$script_github" | grep "^version=" | sed '/grep/d' | sed 's/.*version="//' | sed 's/".*//'`
 
