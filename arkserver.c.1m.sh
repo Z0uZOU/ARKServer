@@ -2,6 +2,12 @@
 
 version="0.0.0.1"
 
+#### Mes paramètres
+token_app=""
+destinataire_1=""
+destinataire_2=""
+check_users="non"
+
 ## Déclaration de ma fonction push
 push-message() {
   push_title=$1
@@ -130,10 +136,10 @@ if [[ ! -f "$icons_cache/ARK-Ab.png" ]] ; then curl -o "$icons_cache/ARK-Ab.png"
 if [[ ! -f "$icons_cache/TS.png" ]] ; then curl -o "$icons_cache/TS.png" "https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/.cache-icons/TS.png" ; fi
 
 #### Mise en variable des icones
-ARKSERVR_ARK=$(curl -s "file://$icons_cache/ARK.png" | base64 -w 0)
-ARKSERVR_ARK-SE=$(curl -s "file://$icons_cache/ARK-SE.png" | base64 -w 0)
-ARKSERVR_ARK-Ab=$(curl -s "file://$icons_cache/ARK-Ab.png" | base64 -w 0)
-ARKSERVR_TS=$(curl -s "file://$icons_cache/TS.png" | base64 -w 0)
+ARKSERVER_ARK=$(curl -s "file://$icons_cache/ARK.png" | base64 -w 0)
+ARKSERVER_ARK_SE=$(curl -s "file://$icons_cache/ARK-SE.png" | base64 -w 0)
+ARKSERVER_ARK_Ab=$(curl -s "file://$icons_cache/ARK-Ab.png" | base64 -w 0)
+ARKSERVER_TS=$(curl -s "file://$icons_cache/TS.png" | base64 -w 0)
 
 #### Fonction: dehumanize
 dehumanise() {
@@ -174,4 +180,211 @@ if [[ ! -f "/opt/script/rcon" ]] ; then
   gcc rcon.c -o rcon > /dev/null
   chmod ugo+rx rcon > /dev/null
   rm rcon.c > /dev/null
+fi
+
+#### Recherche de mes process
+process_arkserver=`ps aux | grep "arkserver ./ShooterGameServer" | sed '/grep/d' | awk '{print $2}'`
+process_teamspeak=`ps aux | grep "./ts3server" | sed '/grep/d' | awk '{print $2}'`
+process_tsbot=`service tsbot status | grep "Main PID" | sed '/grep/d' | awk '{print $3}'`
+if [[ "$process_tsbot" == "" ]]; then
+  process_tsbot=`service tsbot status | grep "└─" | sed '/grep/d' | awk '{print $1}' | sed 's/└─//'`
+fi
+process_hackts=`ps aux | grep "AccountingServerEmulator-Linux" | sed '/grep/d' | awk '{print $2}'`
+#process_arkserver=""
+#process_teamspeak=""
+#process_hackts=""
+#process_tsbot=""
+
+#### Utilisation CPU et MEM de ARK et TS
+ark_cpu=`ps -p $process_arkserver -o %cpu | sed -n '2p' | awk '{print $1}'`
+ark_mem=`ps -p $process_arkserver -o %mem | sed -n '2p' | awk '{print $1}'`
+ts_cpu=`ps -p $process_teamspeak -o %cpu | sed -n '2p' | awk '{print $1}'`
+ts_mem=`ps -p $process_teamspeak -o %mem | sed -n '2p' | awk '{print $1}'`
+
+#### Récupération des paramètres ARK
+if [[ "$process_arkserver" != "" ]]; then
+  arkserver_chemin=`locate \/arkserver | sed '/\/usb_save\//d' | sed '/\/lgsm\//d' | sed '/\/log\//d' | grep "\/arkserver$" | xargs dirname`
+  arkserver_ip=""
+  arkserver_ip_locale=""
+  arkserver_port=""
+  arkserver_server_password=""
+  arkserver_port_rcon=""
+  arkserver_server_admin_password=""
+  arkserver_activemods=""
+  arkserver_max_players=""
+  
+  players_connected=""
+  players=""
+  list_players=""
+  if [[ "$arkserver_chemin" != "" ]]; then
+    arkserver_GameUserSettings=`echo $arkserver_chemin"/serverfiles/ShooterGame/Saved/Config/LinuxServer/GameUserSettings.ini"`
+    if [[ -f "$arkserver_GameUserSettings" ]]; then
+      arkserver_ip_locale=`hostname -I | cut -d' ' -f1`
+      #arkserver_ip_locale=`cat "$arkserver_GameUserSettings" | grep "MultiHome=" | sed -e "s/MultiHome=//g"`
+      arkserver_ip=`dig -b $arkserver_ip_locale +short myip.opendns.com @resolver1.opendns.com`
+      arkserver_port=`cat "$arkserver_GameUserSettings" | grep "^Port=" | sed -e "s/Port=//g"`
+      arkserver_server_password=`cat "$arkserver_GameUserSettings" | grep "^ServerPassword=" | sed -e "s/ServerPassword=//g"`
+      arkserver_port_rcon=`cat "$arkserver_GameUserSettings" | grep "^RCONPort=" | sed -e "s/RCONPort=//g"`
+      arkserver_server_admin_password=`cat "$arkserver_GameUserSettings" | grep "^ServerAdminPassword=" | sed -e "s/ServerAdminPassword=//g"`
+      arkserver_activemods=`cat "$arkserver_GameUserSettings" | grep "^ActiveMods=" | sed -e "s/ActiveMods=//g"`
+      arkserver_max_players=`cat "$arkserver_GameUserSettings" | grep "^MaxPlayers=" | sed -e "s/MaxPlayers=//g"`
+    fi
+  fi
+  if [[ "$arkserver_ip" != "" ]] && [[ "$arkserver_ip_locale" != "" ]] && [[ "$arkserver_port" != "" ]] && [[ "$arkserver_port_rcon" != "" ]]  && [[ "$arkserver_server_password" != "" ]]  && [[ "$arkserver_server_admin_password" != "" ]]; then
+    mn_actuelle=`date +"%M"`
+    if [[ "$mn_actuelle" == "00" ]] || [[ "$mn_actuelle" == "10" ]] || [[ "$mn_actuelle" == "20" ]] || [[ "$mn_actuelle" == "30" ]] || [[ "$mn_actuelle" == "40" ]] || [[ "$mn_actuelle" == "50" ]] || [[ ! -f "$HOME/ark_rcon.txt" ]]; then
+      ./rcon -P$arkserver_server_admin_password -a$arkserver_ip_locale -p$arkserver_port_rcon listplayers > $HOME/ark_rcon.txt
+    fi
+    if [[ -f "$HOME/ark_rcon.txt" ]] ; then
+      players_connected=`cat $HOME/ark_rcon.txt | grep "No Players Connected"`
+      if [[ "$players_connected" == "" ]]; then
+        cat $HOME/ark_rcon.txt | sed '/^$/d' | cut -c 4- | cut -d , -f 1 | sed '$d' > $HOME/list_players.txt
+        players=`wc -l < $HOME/list_players.txt`
+        list_players=`cat $HOME/list_players.txt | sed ':a;N;$!ba;s/\n/, /g'`
+      fi
+    fi
+  fi
+
+#### Recherche de la map ARK
+  map_arkserver=`ps aux | grep "arkserver ./ShooterGameServer" | sed '/grep/d' | sed 's/.*"\(.*\)?listen.*/\1/'`
+  ARK_SERVER_ICON=$ARKSERVER_ARK
+  arkserver_nom_map="The Island"
+
+  if [[ "$map_arkserver" == "TheCenter" ]]; then
+    arkserver_nom_map="The Center"
+  fi
+  if [[ "$map_arkserver" == "ScorchedEarth_P" ]]; then
+    ARK_SERVER_ICON=$ARKSERVER_ARK_SE
+    arkserver_nom_map="Scorched Earth"
+  fi
+  if [[ "$map_arkserver" == "Ragnarok" ]]; then
+    arkserver_nom_map="Ragnarok"
+  fi
+  if [[ "$map_arkserver" == "Aberration_P" ]]; then
+    ARK_SERVER_ICON=$ARKSERVER_ARK_Ab
+    arkserver_nom_map="Aberration"
+  fi
+fi
+
+#### Recherche et affichage des utilisateurs TS
+if [[ "$check_users" == "oui" ]] && [[ "$process_tsbot" != "" ]]; then
+  mn_actuelle=`date +"%M"`
+  if [[ "$mn_actuelle" == "00" ]] || [[ "$mn_actuelle" == "10" ]] || [[ "$mn_actuelle" == "20" ]] || [[ "$mn_actuelle" == "30" ]] || [[ "$mn_actuelle" == "40" ]] || [[ "$mn_actuelle" == "50" ]] || [[ ! -f "$HOME/clients.txt" ]]; then
+    echo "login serveradmin password_serveradmin" > $HOME/commandes.txt
+    echo "use 1" >> $HOME/commandes.txt
+    #echo "clientupdate client_nickname=ARKServer_Script" >> $HOME/commandes.txt
+    echo "clientlist" >> $HOME/commandes.txt
+    echo "quit" >> $HOME/commandes.txt
+    
+    netcat 127.0.0.1 10011 < $HOME/commandes.txt > $HOME/telnet.txt
+    
+    clients=`cat $HOME/telnet.txt | grep -Po '(?<=client_nickname=)[^ ]*' | sed '/\\sfrom\\s/d' | sed '/GARDiEN/d' | sed '$d' | wc -l`
+    cat $HOME/telnet.txt | grep -Po '(?<=client_nickname=)[^ ]*' | sed '/\\sfrom\\s/d' | sed '/GARDiEN/d' | sed 's/\\s/ /g' > $HOME/clients.txt
+  fi
+  
+  ts_users=()
+  while IFS= read -r -d $'\n'; do
+    ts_users+=("$REPLY")
+  done <$HOME/clients.txt
+  
+  ### Nombre d'utilisateurs de TS
+  ts_clients=`echo ${#ts_users[@]}`
+fi
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#### Affichage
+#if [[ "$process_arkserver" == "" ]] || [[ "$process_hackts" == "" ]] || [[ "$process_teamspeak" == "" ]] || [[ "$process_tsbot" == "" ]]; then
+if [[ "$process_hackts" == "" ]] || [[ "$process_teamspeak" == "" ]] || [[ "$process_tsbot" == "" ]]; then
+  #echo -e "\e[41m  \e[0m Serveurs | image='$SERVER_ICON' imageWidth=25"
+  echo -e "\e[41m   \e[0m Serveurs"
+else
+  #echo -e "\e[42m  \e[0m Serveurs | image='$SERVER_ICON' imageWidth=25"
+  echo -e "\e[42m   \e[0m Serveurs"
+fi
+echo "---"
+## ARK
+if [[ "$process_arkserver" != "" ]]; then
+  printf "\e[1m%-15s :\e[0m %-3s | image='$ARK_SERVER_ICON' ansi=true font='Ubuntu Mono' trim=false imageWidth=30 \n" "Serveur ARK" ":heavy_check_mark:"
+  printf "%-2s \u2514\u2500 \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" "Map" "$arkserver_nom_map"
+  if [[ "$arkserver_ip" != "" ]] && [[ "$arkserver_ip_locale" != "" ]] && [[ "$arkserver_port" != "" ]] && [[ "$arkserver_port_rcon" != "" ]]  && [[ "$arkserver_server_password" != "" ]]  && [[ "$arkserver_server_admin_password" != "" ]]; then
+    printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":earth_africa:" "Adresse IP" "$arkserver_ip:$arkserver_port"
+    printf "%-2s \u251c\u2500 \e[1m%-10s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" "IP Locale" "$arkserver_ip_locale"
+    printf "%-2s \u2514\u2500 \e[1m%-10s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" "Password" "$arkserver_server_password"
+    printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":construction:" "Port RCON" "$arkserver_port_rcon"
+    printf "%-2s \u2514\u2500 \e[1m%-10s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" "Password" "$arkserver_server_admin_password"
+  else
+    printf "%-2s %-3s \e[1m%-40s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":earth_africa:" "configuration inconnue"
+  fi
+  if [[ "$arkserver_activemods" != "" ]]; then
+    printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":construction:" "Mods" "$arkserver_activemods"
+  fi
+  printf "%-2s %-3s %s | ansi=true font='Ubuntu Mono' trim=false bash='$arkserver_chemin/arkserver restart' terminal=true \n" "--" ":repeat:" "Redémarrage du serveur"
+  printf "%-2s %-3s %s | ansi=true font='Ubuntu Mono' trim=false bash='echo route123 | sudo -kS /opt/scripts/updatemods.sh --extra-log' terminal=true \n" "--" ":repeat:" "Mise à jour des mods"
+  printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":arrow_forward:" "Numero du process" "$process_arkserver"
+  printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":arrow_forward:" "Utilisation CPU" "$ark_cpu"
+  printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":arrow_forward:" "Utilisation MEM" "$ark_mem"
+  if [[ -f "$HOME/ark_rcon.txt" ]] ; then
+    if [[ "$players_connected" != "" ]]; then
+      if [[ "$arkserver_max_players" != "" ]]; then
+        printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":arrow_forward:" "Joueurs connectes" "0/$arkserver_max_players"
+      else
+        printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":arrow_forward:" "Joueurs connectes" "0"
+      fi
+    else
+      if [[ "$arkserver_max_players" != "" ]]; then
+        printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":arrow_forward:" "Joueurs connectes" "$players/$arkserver_max_players"
+        printf "%-2s \u2514\u2500\e[0m %-s | ansi=true font='Ubuntu Mono' trim=false \n" "--" "$list_players"
+      else
+        printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":arrow_forward:" "Joueurs connectes" "$players"
+        printf "%-2s \u2514\u2500\e[0m %-s | ansi=true font='Ubuntu Mono' trim=false \n" "--" "$list_players"
+      fi
+    fi
+  fi
+else
+  printf "\e[1m%-15s :\e[0m %-3s | image='$ARKSERVER_ARK' ansi=true font='Ubuntu Mono' trim=false imageWidth=30 \n" "Serveur ARK" ":x:"
+  printf "%-2s %-3s %s | ansi=true font='Ubuntu Mono' trim=false bash='$arkserver_chemin/arkserver restart' terminal=true \n" "--" ":repeat:" "Redémarrage du serveur"
+fi
+
+## TS
+if [[ "$process_teamspeak" != "" ]]; then
+  printf "\e[1m%-15s :\e[0m %-3s | image='$ARKSERVER_TS' ansi=true font='Ubuntu Mono' trim=false imageWidth=30 \n" "Serveur TS" ":heavy_check_mark:"
+  printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":arrow_forward:" "Numero du process" "$process_teamspeak"
+  printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":arrow_forward:" "Utilisation CPU" "$ts_cpu"
+  printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":arrow_forward:" "Utilisation MEM" "$ts_mem"
+else
+  printf "\e[1m%-15s :\e[0m %-3s | image='$ARKSERVER_TS' ansi=true font='Ubuntu Mono' trim=false imageWidth=30 \n" "Serveur TS" ":x:"
+fi
+if [[ "$process_hackts" != "" ]]; then
+  printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":heavy_check_mark:" "Hack TS" "PID $process_hackts"
+else
+  printf "%-2s %-3s \e[1m%-18s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":x:" "Hack TS"
+fi
+if [[ "$process_tsbot" != "" ]]; then
+  printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":heavy_check_mark:" "Bot TS" "PID $process_tsbot"
+else
+  printf "%-2s %-3s \e[1m%-18s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":x:" "Bot TS"
+fi
+
+## Users TS
+if [[ "$check_users" == "oui" ]] && [[ "$process_tsbot" != "" ]]; then
+  printf "\e[1m%-15s :\e[0m %-3s | image='$TS_USERS_ICON' ansi=true font='Ubuntu Mono' trim=false imageWidth=30 \n" "Utilisateurs TS" "$ts_clients"
+  for user_num in "${!ts_users[@]}"; do
+    if [[ "$user_num" != $((ts_clients-1)) ]]; then
+      printf "%-2s \u251c\u2500 %-17s : %-20s %s | ansi=true font='Ubuntu Mono' trim=false \n" "--" "Client" "${ts_users[$user_num]}"
+    else
+      printf "%-2s \u2514\u2500 %-17s : %-20s %s | ansi=true font='Ubuntu Mono' trim=false \n" "--" "Client" "${ts_users[$user_num]}"
+    fi
+  done
 fi
