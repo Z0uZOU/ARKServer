@@ -2,6 +2,25 @@
 
 version="0.0.0.1"
 
+## Déclaration de ma fonction push
+push-message() {
+  push_title=$1
+  push_content=$2
+  for user in {1..10}; do
+    destinataire=`eval echo "\\$destinataire_"$user`
+    if [ -n "$destinataire" ]; then
+      curl -s \
+        --form-string "token=$token_app" \
+        --form-string "user=$destinataire" \
+        --form-string "title=$push_title" \
+        --form-string "message=$push_content" \
+        --form-string "html=1" \
+        --form-string "priority=0" \
+        https://api.pushover.net/1/messages.json > /dev/null
+    fi
+  done
+}
+
 #### Nettoyage
 if [[ -f "~/arkserver-update.sh" ]]; then
   rm $HOME/arkserver-update.sh
@@ -146,3 +165,13 @@ humanise() {
   echo "$b$d ${S[$s]}"
 }
 
+#### emplacement des fichiers temporaire et rcon
+cd /opt/scripts
+
+#### vérification de la présence de 'rcon'
+if [[ ! -f "/opt/script/rcon" ]] ; then
+  wget http://www.dopefish.de/files/rcon.c > /dev/null
+  gcc rcon.c -o rcon > /dev/null
+  chmod ugo+rx rcon > /dev/null
+  rm rcon.c > /dev/null
+fi
