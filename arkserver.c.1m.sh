@@ -104,13 +104,17 @@ icons_cache=`echo $HOME/.config/argos/.cache-icons`
 if [[ ! -f "$icons_cache" ]]; then
   mkdir -p $icons_cache
 fi
-if [[ ! -f "$icons_cache/updater.png" ]] ; then curl -o "$icons_cache/updater.png" "https://raw.githubusercontent.com/Z0uZOU/Convert2HDLight/master/.cache-icons/updater.png" ; fi
-if [[ ! -f "$icons_cache/convert2hdlight-argos.png" ]] ; then curl -o "$icons_cache/convert2hdlight-argos.png" "https://raw.githubusercontent.com/Z0uZOU/Convert2HDLight/master/.cache-icons/hdlightencode-argos.png" ; fi
-if [[ ! -f "$icons_cache/convert2hdlight-bad-argos.png" ]] ; then curl -o "$icons_cache/convert2hdlight-bad-argos.png" "https://raw.githubusercontent.com/Z0uZOU/Convert2HDLight/master/.cache-icons/hdlightencode-bad-argos.png" ; fi
+if [[ ! -f "$icons_cache/updater.png" ]] ; then curl -o "$icons_cache/updater.png" "https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/.cache-icons/updater.png" ; fi
+if [[ ! -f "$icons_cache/ARK.png" ]] ; then curl -o "$icons_cache/ARK.png" "https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/.cache-icons/ARK.png" ; fi
+if [[ ! -f "$icons_cache/ARK-SE.png" ]] ; then curl -o "$icons_cache/ARK-SE.png" "https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/.cache-icons/ARK-SE.png" ; fi
+if [[ ! -f "$icons_cache/ARK-Ab.png" ]] ; then curl -o "$icons_cache/ARK-Ab.png" "https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/.cache-icons/ARK-Ab.png" ; fi
+if [[ ! -f "$icons_cache/TS.png" ]] ; then curl -o "$icons_cache/TS.png" "https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/.cache-icons/TS.png" ; fi
 
 #### Mise en variable des icones
-CONVERT2HDLIGHT_ICON=$(curl -s "file://$icons_cache/convert2hdlight-argos.png" | base64 -w 0)
-CONVERT2HDLIGHT_BAD_ICON=$(curl -s "file://$icons_cache/convert2hdlight-bad-argos.png" | base64 -w 0)
+ARKSERVR_ARK=$(curl -s "file://$icons_cache/ARK.png" | base64 -w 0)
+ARKSERVR_ARK-SE=$(curl -s "file://$icons_cache/ARK-SE.png" | base64 -w 0)
+ARKSERVR_ARK-Ab=$(curl -s "file://$icons_cache/ARK-Ab.png" | base64 -w 0)
+ARKSERVR_TS=$(curl -s "file://$icons_cache/TS.png" | base64 -w 0)
 
 #### Fonction: dehumanize
 dehumanise() {
