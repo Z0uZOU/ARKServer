@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-version="0.0.0.4"
+version="0.0.0.5"
+
 
 #### Mes paramètres
 token_app=`cat $HOME/.config/argos/.arkserver-parameters | awk '{print $1}' FS="§"`
@@ -221,13 +222,14 @@ ts_mem=`ps -p $process_teamspeak -o %mem | sed -n '2p' | awk '{print $1}'`
 
 #### Recupération des infos serveur ARK
 sh_serveurs=()
-map=()
-sessionname=()
-ip=()
-port=()
-queryport=()
-rconport=()
-maxplayers=()
+map_serveurs=()
+sessionname_serveurs=()
+ip_serveurs=()
+port_serveurs=()
+queryport_serveurs=()
+rconport_serveurs=()
+maxplayers_serveurs=()
+crontab_serveurs=()
 ip_locale=`hostname -I | cut -d' ' -f1`
 ip_distante=`dig -b $ip_locale +short myip.opendns.com @resolver1.opendns.com`
 #ip_vpn=`dig +short myip.opendns.com @resolver1.opendns.com`
@@ -257,6 +259,17 @@ for sh_actuel in $liste_serveurs ; do
     queryport_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "^queryport=" | sed -e "s/queryport=\"//g" | sed -e "s/\"//g"`)
     rconport_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "^rconport=" | sed -e "s/rconport=\"//g" | sed -e "s/\"//g"`)
     maxplayers_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "^maxplayers=" | sed -e "s/maxplayers=\"//g" | sed -e "s/\"//g"`)
+    test_crontab=`crontab -l | grep "$sh_actuel start"`
+    if [[ "$test_crontab" == "" ]]; then
+      crontab_serveurs+=("Off")
+    else
+      test_crontab=`crontab -l | grep "$sh_actuel start" | grep "#"`
+      if [[ "$test_crontab" == "" ]]; then
+        crontab_serveurs+=("On")
+      else
+        crontab_serveurs+=("Off")
+      fi
+    fi
   else
     map_serveurs+=("0")
     serveur_name="Serveur non configuré"
@@ -266,6 +279,17 @@ for sh_actuel in $liste_serveurs ; do
     queryport_serveurs+=("0")
     rconport_serveurs+=("0")
     maxplayers_serveurs+=("0")
+    test_crontab=`crontab -l | grep "$sh_actuel start"`
+    if [[ "$test_crontab" == "" ]]; then
+      crontab_serveurs+=("Off")
+    else
+      test_crontab=`crontab -l | grep "$sh_actuel start" | grep "#"`
+      if [[ "$test_crontab" == "" ]]; then
+        crontab_serveurs+=("On")
+      else
+        crontab_serveurs+=("Off")
+      fi
+    fi
   fi
 done
 nombre_serveur=`echo ${#map_serveurs[@]}`
@@ -385,15 +409,25 @@ while [[ $numero_serveur != $nombre_serveur ]]; do
     printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":arrow_forward:" "Numero du process" "$process_arkserver"
     printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":arrow_forward:" "Utilisation CPU" "$ark_cpu"
     printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":arrow_forward:" "Utilisation MEM" "$ark_mem"
+    if [[ "${crontab_serveurs[$numero_serveur]}" == "On" ]]; then
+      printf "%-2s %-3s %s | ansi=true font='Ubuntu Mono' trim=false bash='/opt/scripts/crontab-arkserver.sh Off $chemin_serveur ${sh_serveurs[$numero_serveur]}' terminal=true \n" "--" ":repeat_one:" "Désactiver le redémarrage automatique du serveur"
+    else
+      printf "%-2s %-3s %s | ansi=true font='Ubuntu Mono' trim=false bash='/opt/scripts/crontab-arkserver.sh On $chemin_serveur ${sh_serveurs[$numero_serveur]}' terminal=true \n" "--" ":repeat_one:" "Activer le redémarrage automatique du serveur"
+    fi
     printf "%-2s %-3s %s | ansi=true font='Ubuntu Mono' trim=false bash='$chemin_serveur/${sh_serveurs[$numero_serveur]} restart' terminal=true \n" "--" ":arrows_counterclockwise:" "Redémarrage du serveur"
     printf "%-2s %-3s %s | ansi=true font='Ubuntu Mono' trim=false bash='$chemin_serveur/${sh_serveurs[$numero_serveur]} stop' terminal=true \n" "--" ":no_entry_sign:" "Arrêt du serveur"
     printf "%-2s %-3s %s | ansi=true font='Ubuntu Mono' trim=false bash='echo $password_root | sudo -kS /opt/scripts/updatemods.sh --extra-log' terminal=true \n" "--" ":repeat:" "Mise à jour des mods"
   else
     if [[ "${map_serveurs[$numero_serveur]}" == "0" ]]; then
-      printf "\e[1m%-15s :\e[0m %-3s | image='$ARK_SERVER_ICON' ansi=true font='Ubuntu Mono' trim=false imageWidth=30 \n" "Serveur non configuré" ":interrobang:"
+      printf "\e[1m%-15s :\e[0m %-3s | image='$ARK_SERVER_ICON' ansi=true font='Ubuntu Mono' trim=false imageWidth=18 \n" "Serveur non configuré" ":interrobang:"
     else
-      printf "\e[1m%-15s :\e[0m %-3s | image='$ARK_SERVER_ICON' ansi=true font='Ubuntu Mono' trim=false imageWidth=30 \n" "$arkserver_nom_map" ":x:"
+      printf "\e[1m%-15s :\e[0m %-3s | image='$ARK_SERVER_ICON' ansi=true font='Ubuntu Mono' trim=false imageWidth=18 \n" "$arkserver_nom_map" ":x:"
       printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":abc:" "Nom" "${sessionname_serveurs[$numero_serveur]}"
+      if [[ "${crontab_serveurs[$numero_serveur]}" == "On" ]]; then
+        printf "%-2s %-3s %s | ansi=true font='Ubuntu Mono' trim=false bash='/opt/scripts/crontab-arkserver.sh Off $chemin_serveur ${sh_serveurs[$numero_serveur]}' terminal=true \n" "--" ":repeat_one:" "Désactiver le redémarrage automatique du serveur"
+      else
+        printf "%-2s %-3s %s | ansi=true font='Ubuntu Mono' trim=false bash='/opt/scripts/crontab-arkserver.sh On $chemin_serveur ${sh_serveurs[$numero_serveur]}' terminal=true \n" "--" ":repeat_one:" "Activer le redémarrage automatique du serveur"
+      fi
       printf "%-2s %-3s %s | ansi=true font='Ubuntu Mono' trim=false bash='$chemin_serveur/${sh_serveurs[$numero_serveur]} start' terminal=true \n" "--" ":arrow_forward:" "Démarrage du serveur"
     fi
   fi
@@ -423,7 +457,7 @@ fi
 
 ## Users TS
 if [[ "$check_users" == "oui" ]] && [[ "$process_tsbot" != "" ]]; then
-  printf "\e[1m%-15s :\e[0m %-3s | image='$TS_USERS_ICON' ansi=true font='Ubuntu Mono' trim=false imageWidth=30 \n" "Utilisateurs TS" "$ts_clients"
+  printf "\e[1m%-15s :\e[0m %-3s | image='$TS_USERS_ICON' ansi=true font='Ubuntu Mono' trim=false imageWidth=18 \n" "Utilisateurs TS" "$ts_clients"
   for user_num in "${!ts_users[@]}"; do
     if [[ "$user_num" != $((ts_clients-1)) ]]; then
       printf "%-2s \u251c\u2500 %-17s : %-20s %s | ansi=true font='Ubuntu Mono' trim=false \n" "--" "Client" "${ts_users[$user_num]}"
