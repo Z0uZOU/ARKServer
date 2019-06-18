@@ -6,7 +6,7 @@
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && shc -f updatemods.sh -o updatemods.bin && chmod +x updatemods.bin && rm -f *.x.c && rm -f updatemods.sh
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && chmod +x updatemods.sh
 ## Micro-config
-version="Version: 0.0.0.58" #base du système de mise à jour
+version="Version: 0.0.0.59" #base du système de mise à jour
 description="Téléchargeur de Mods pour ARK: Survival Evolved" #description pour le menu
 script_github="https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh" #emplacement du script original
 changelog_github="https://pastebin.com/raw/vJpabVtT" #emplacement du changelog de ce script
@@ -841,6 +841,7 @@ done
 
 eval 'echo -e "\e[44m\u2263\u2263  \e[0m \e[44m \e[1mREDÉMARRAGE DU SERVEUR  \e[0m \e[44m  \e[0m \e[44m \e[0m \e[34m\u2759\e[0m"' $mon_log_perso
 if [[ "$restart_necessaire" == "oui" ]]; then
+  restart="non"
   #### Recupération des infos serveur ARK
   sh_serveurs=()
   map_serveurs=()
@@ -878,13 +879,18 @@ if [[ "$restart_necessaire" == "oui" ]]; then
       echo "done" >> /opt/scripts/ark-restart.sh
       echo "printf \"\$mon_printf\" && printf \"\\r\"" >> /opt/scripts/ark-restart.sh
       echo "echo -e \"\\r[\\e[42m\\u2713 \e[0m] Redémarrage du serveur ${sessionname_serveurs[$numero_serveur]}\"" >> /opt/scripts/ark-restart.sh
+      restart="oui"
     fi
     numero_serveur=$(expr $numero_serveur + 1)
   done
   chmod +x /opt/scripts/ark-restart.sh
+  if [[ "$restart" == "oui" ]]; then
 su $user_arkserver <<'EOF'
 bash /opt/scripts/ark-restart.sh
 EOF
+  else
+    eval 'echo -e "\r[\e[42m\u2713 \e[0m] Pas de nécessité de redémarrer le serveur"' $mon_log_perso
+  fi
   rm -f /opt/scripts/ark-restart.*
 else
   eval 'echo -e "\r[\e[42m\u2713 \e[0m] Pas de nécessité de redémarrer le serveur"' $mon_log_perso
