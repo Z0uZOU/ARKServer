@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 
-version="0.0.0.5"
+version="0.0.0.6"
 
 
 #### Mes paramètres
-token_app=`cat $HOME/.config/argos/.arkserver-parameters | awk '{print $1}' FS="§"`
-destinataire_1=`cat $HOME/.config/argos/.arkserver-parameters | awk '{print $2}' FS="§"`
-destinataire_2=`cat $HOME/.config/argos/.arkserver-parameters | awk '{print $3}' FS="§"`
-password_root=`cat $HOME/.config/argos/.arkserver-parameters | awk '{print $4}' FS="§"`
-password_serveradmin_TS=`cat $HOME/.config/argos/.arkserver-parameters | awk '{print $5}' FS="§"`
+asterisk=`cat $HOME/.config/argos/.arkserver-parameters | awk '{print $1}' FS="§"`
+token_app=`cat $HOME/.config/argos/.arkserver-parameters | awk '{print $2}' FS="§"`
+destinataire_1=`cat $HOME/.config/argos/.arkserver-parameters | awk '{print $3}' FS="§"`
+destinataire_2=`cat $HOME/.config/argos/.arkserver-parameters | awk '{print $4}' FS="§"`
+password_root=`cat $HOME/.config/argos/.arkserver-parameters | awk '{print $5}' FS="§"`
+password_serveradmin_TS=`cat $HOME/.config/argos/.arkserver-parameters | awk '{print $6}' FS="§"`
 check_users="non"
 
 ## Déclaration de ma fonction push
@@ -42,7 +43,8 @@ if [[ ! -f "/bin/gawk" ]] && [[ ! -f "/usr/bin/gawk" ]]; then gawk_missing="1"; 
 if [[ ! -f "/bin/wget" ]] && [[ ! -f "/usr/bin/wget" ]]; then wget_missing="1"; fi
 if [[ ! -f "/bin/grep" ]] && [[ ! -f "/usr/bin/grep" ]]; then grep_missing="1"; fi
 if [[ ! -f "/bin/sed" ]] && [[ ! -f "/usr/bin/sed" ]]; then sed_missing="1"; fi
-if [[ "$yad_missing" == "1" ]] || [[ "$curl_missing" == "1" ]] || [[ "$gawk_missing" == "1" ]] || [[ "$wget_missing" == "1" ]] || [[ "$grep_missing" == "1" ]] || [[ "$sed_missing" == "1" ]]; then
+if [[ ! -f "/bin/gcc" ]] && [[ ! -f "/usr/bin/gcc" ]]; then gcc_missing="1"; fi
+if [[ "$yad_missing" == "1" ]] || [[ "$curl_missing" == "1" ]] || [[ "$gawk_missing" == "1" ]] || [[ "$wget_missing" == "1" ]] || [[ "$grep_missing" == "1" ]] || [[ "$sed_missing" == "1" ]] || [[ "$gcc_missing" == "1" ]]; then
   echo " Erreur(s)"
   echo "---"
   if [[ "$yad_missing" == "1" ]]; then echo -e "\e[1mDépendance manquante      :\e[0m sudo apt-get install yad | ansi=true font='Ubuntu Mono'"; fi
@@ -51,6 +53,7 @@ if [[ "$yad_missing" == "1" ]] || [[ "$curl_missing" == "1" ]] || [[ "$gawk_miss
   if [[ "$wget_missing" == "1" ]]; then echo -e "\e[1mDépendance manquante      :\e[0m sudo apt-get install wget | ansi=true font='Ubuntu Mono'"; fi
   if [[ "$grep_missing" == "1" ]]; then echo -e "\e[1mDépendance manquante      :\e[0m sudo apt-get install grep | ansi=true font='Ubuntu Mono'"; fi
   if [[ "$sed_missing" == "1" ]]; then echo -e "\e[1mDépendance manquante      :\e[0m sudo apt-get install sed | ansi=true font='Ubuntu Mono'"; fi
+  if [[ "$gcc_missing" == "1" ]]; then echo -e "\e[1mDépendance manquante      :\e[0m sudo apt-get install gcc | ansi=true font='Ubuntu Mono'"; fi
   echo "---"
   echo "Rafraichir | refresh=true"
   exit 1
@@ -152,6 +155,8 @@ if [[ ! -f "$icons_cache/ARK-Ragnarok.png" ]] ; then curl -o "$icons_cache/ARK-R
 if [[ ! -f "$icons_cache/ARK-Extinction.png" ]] ; then curl -o "$icons_cache/ARK-Extinction.png" "https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/.cache-icons/ARK-Extinction.png" ; fi
 if [[ ! -f "$icons_cache/TS.png" ]] ; then curl -o "$icons_cache/TS.png" "https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/.cache-icons/TS.png" ; fi
 if [[ ! -f "$icons_cache/settings.png" ]] ; then curl -o "$icons_cache/settings.png" "https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/.cache-icons/settings.png" ; fi
+if [[ ! -f "$icons_cache/add.png" ]] ; then curl -o "$icons_cache/add.png" "https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/.cache-icons/add.png" ; fi
+if [[ ! -f "$icons_cache/refresh.png" ]] ; then curl -o "$icons_cache/refresh.png" "https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/.cache-icons/refresh.png" ; fi
 
 #### Mise en variable des icones
 SERVER_ICON=$(curl -s "file://$icons_cache/ARKServer.png" | base64 -w 0)
@@ -163,6 +168,8 @@ ARKSERVER_ARK_Ragnarok=$(curl -s "file://$icons_cache/ARK-Ragnarok.png" | base64
 ARKSERVER_ARK_Extinction=$(curl -s "file://$icons_cache/ARK-Extinction.png" | base64 -w 0)
 ARKSERVER_TS=$(curl -s "file://$icons_cache/TS.png" | base64 -w 0)
 SETTINGS_ICON=$(curl -s "file://$icons_cache/settings.png" | base64 -w 0)
+ADD_ICON=$(curl -s "file://$icons_cache/add.png" | base64 -w 0)
+REFRESH_ICON=$(curl -s "file://$icons_cache/refresh.png" | base64 -w 0)
 
 #### Fonction: dehumanize
 dehumanise() {
@@ -229,28 +236,23 @@ port_serveurs=()
 queryport_serveurs=()
 rconport_serveurs=()
 maxplayers_serveurs=()
+idmods_serveurs=()
 crontab_serveurs=()
 ip_locale=`hostname -I | cut -d' ' -f1`
 ip_distante=`dig -b $ip_locale +short myip.opendns.com @resolver1.opendns.com`
-#ip_vpn=`dig +short myip.opendns.com @resolver1.opendns.com`
-#if [[ "$ip_distante" != "$ip_vpn" ]] && [[ "$ip_distante" =~ "connection timed out" ]]; then
-#  service openvpnauto restart
-#  ip_distante=`dig -b $ip_locale +short myip.opendns.com @resolver1.opendns.com`
-#fi
-
 
 chemin_serveur=`locate \/arkserver | sed '/\/usb_save\//d' | sed '/\/lgsm\//d' | sed '/\/log\//d' | sed '/\/.config\/argos\//d' | grep "\/arkserver$" | xargs dirname`
 liste_serveurs=`locate \/arkserver | grep "$chemin_serveur" | sed '/\/usb_save\//d' | sed '/\/lgsm\//d' | sed '/\/log\//d' | sed -e "s|$chemin_serveur\/||g"`
 arkserver_GameUserSettings=`echo $chemin_serveur"/serverfiles/ShooterGame/Saved/Config/LinuxServer/GameUserSettings.ini"`
 server_password=`cat "$arkserver_GameUserSettings" | grep "^ServerPassword=" | sed -e "s/ServerPassword=//g"`
 server_admin_password=`cat "$arkserver_GameUserSettings" | grep "^ServerAdminPassword=" | sed -e "s/ServerAdminPassword=//g"`
+if [[ "$asterisk" == "TRUE" ]]; then server_admin_password=`echo $server_admin_password | tr "[[:print:]]" "#"`; fi
 server_version=`cat "$chemin_serveur/serverfiles/version.txt" | sed -e 's/ //g'`
 activemods=`cat "$arkserver_GameUserSettings" | grep "^ActiveMods=" | sed -e "s/ActiveMods=//g"`
 
 for sh_actuel in $liste_serveurs ; do
   sh_serveurs+=("$sh_actuel")
   if [[ -f "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" ]]; then
-    #map_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "parms=\"" | sed 's/.*"\(.*\)?listen.*/\1/'`)
     map_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "^defaultmap=" | sed -e "s/defaultmap=\"//g" | sed -e "s/\"//g"`)
     serveur_name=`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "SessionName=" | sed 's/.*SessionName=//g' | sed 's/?.*//g'`
     sessionname_serveurs+=("$serveur_name")
@@ -259,6 +261,7 @@ for sh_actuel in $liste_serveurs ; do
     queryport_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "^queryport=" | sed -e "s/queryport=\"//g" | sed -e "s/\"//g"`)
     rconport_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "^rconport=" | sed -e "s/rconport=\"//g" | sed -e "s/\"//g"`)
     maxplayers_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "^maxplayers=" | sed -e "s/maxplayers=\"//g" | sed -e "s/\"//g"`)
+    idmods_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "^idmods=" | sed -e "s/idmods=\"//g" | sed -e "s/\"//g"`)
     test_crontab=`crontab -l | grep "$sh_actuel start"`
     if [[ "$test_crontab" == "" ]]; then
       crontab_serveurs+=("Off")
@@ -375,12 +378,10 @@ while [[ $numero_serveur != $nombre_serveur ]]; do
     printf "\e[1m%-15s :\e[0m %-3s | image='$ARK_SERVER_ICON' ansi=true font='Ubuntu Mono' trim=false imageWidth=18 \n" "$arkserver_nom_map" ":heavy_check_mark:"
     printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":abc:" "Nom" "${sessionname_serveurs[$numero_serveur]}"
     printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":earth_africa:" "Adresse IP" "$ip_distante:${port_serveurs[$numero_serveur]}"
-    printf "%-2s \u2514\u2500 \e[1m%-10s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" "Password" "$server_password"
+    if [[ "$server_password" != "" ]]; then printf "%-2s \u2514\u2500 \e[1m%-10s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" "Password" "$server_password"; fi
     printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":construction:" "Port RCON" "${rconport_serveurs[$numero_serveur]}"
     printf "%-2s \u2514\u2500 \e[1m%-10s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" "Password" "$server_admin_password"
-    if [[ "$activemods" != "" ]]; then
-      printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":construction:" "Mods" "$activemods"
-    fi
+    if [[ "$activemods" != "" ]]; then printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":construction:" "Mods" "$activemods"; fi
     mn_actuelle=`date +"%M"`
     if [[ "$mn_actuelle" == "00" ]] || [[ "$mn_actuelle" == "10" ]] || [[ "$mn_actuelle" == "20" ]] || [[ "$mn_actuelle" == "30" ]] || [[ "$mn_actuelle" == "40" ]] || [[ "$mn_actuelle" == "50" ]] || [[ ! -f "$HOME/.config/argos/arkserver/rcon_$numero_serveur.txt" ]]; then
       ./rcon -P$server_admin_password -a$ip_locale -p${rconport_serveurs[$numero_serveur]} listplayers > $HOME/.config/argos/arkserver/rcon_$numero_serveur.txt
@@ -393,11 +394,10 @@ while [[ $numero_serveur != $nombre_serveur ]]; do
         list_players=`cat $HOME/.config/argos/arkserver/list_players.txt | sed ':a;N;$!ba;s/\n/, /g'`
         if [[ "${maxplayers_serveurs[$numero_serveur]}" != "" ]]; then
           printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":information_source:" "Joueurs connectes" "$players/${maxplayers_serveurs[$numero_serveur]}"
-          printf "%-2s \u2514\u2500\e[0m %-s | ansi=true font='Ubuntu Mono' trim=false \n" "--" "$list_players"
         else
           printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":information_source:" "Joueurs connectes" "$players"
-          printf "%-2s \u2514\u2500\e[0m %-s | ansi=true font='Ubuntu Mono' trim=false \n" "--" "$list_players"
         fi
+        printf "%-2s \u2514\u2500\e[0m %-s | ansi=true font='Ubuntu Mono' trim=false \n" "--" "$list_players"
       else
         if [[ "${max_players[$numero_serveur]}" != "" ]]; then
           printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":information_source:" "Joueurs connectes" "0/${maxplayers_serveurs[$numero_serveur]}"
@@ -468,12 +468,12 @@ if [[ "$check_users" == "oui" ]] && [[ "$process_tsbot" != "" ]]; then
 fi
 
 #### Préparation des paramètres
-parametres=`echo -e "yad --fixed --undecorated --no-escape --skip-taskbar --width=\"700\" --height=\"300\" --center --borders=20 --window-icon=\"$HOME/.config/argos/.cache-icons/ARKServer.png\" --title=\"Paramètres généraux\" --text=\"<big>\r\rVeuillez entrer vos informations de compte(s).\rCes informations ne sont pas stockées sur internet.\r\r</big>\" --text-align=center --image=\"$HOME/.config/argos/.cache-icons/ARKServer.png\" --form --separator=\"§\" --field=\"API Key\" --field=\"User_1 Key\" --field=\"User_2 Key\" --field=\"Mot de passe root\" --field=\"Mot de passe Admin du TS\" \"$token_app\" \"$destinataire_1\" \"$destinataire_2\" \"$password_root\" \"$password_serveradmin_TS\" --button=gtk-ok:0 2>/dev/null >~/.config/argos/.arkserver-parameters"`
+parametres=`echo -e "yad --fixed --undecorated --no-escape --skip-taskbar --width=\"700\" --height=\"300\" --center --borders=20 --window-icon=\"$HOME/.config/argos/.cache-icons/ARKServer.png\" --title=\"Paramètres généraux\" --text=\"<big>\r\rVeuillez entrer vos informations de compte(s).\rCes informations ne sont pas stockées sur internet.\r\r</big>\" --text-align=center --image=\"$HOME/.config/argos/.cache-icons/ARKServer.png\" --form --separator=\"§\" --field=\"Ne pas afficher les mots de passe en clair:CHK\" --field=\"API Key\" --field=\"User_1 Key\" --field=\"User_2 Key\" --field=\"Mot de passe root\" --field=\"Mot de passe Admin du TS\" \"$asterisk\" \"$token_app\" \"$destinataire_1\" \"$destinataire_2\" \"$password_root\" \"$password_serveradmin_TS\" --button=gtk-ok:0 2>/dev/null >~/.config/argos/.arkserver-parameters"`
 
 echo "---"
 printf "%-15s | image='$SETTINGS_ICON' imageWidth=18 ansi=true font='Ubuntu Mono' trim=false bash='$parametres' terminal=false \n" "Paramètres de l'extension"
-
-#echo "---"
+#printf "%-15s | image='$ADD_ICON' imageWidth=18 ansi=true font='Ubuntu Mono' trim=false bash='$chemin_serveur/linuxgsm.sh arkserver' terminal=true \n" "Ajouter un serveur"
+printf "%-15s | image='$REFRESH_ICON' imageWidth=18 ansi=true font='Ubuntu Mono' trim=false bash='echo $password_root | sudo -kS updatedb' terminal=false refresh=true \n" "Rafraichir"
 #echo "Rafraichir | refresh=true"
 
 echo "---"
