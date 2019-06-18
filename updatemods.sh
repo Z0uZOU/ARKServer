@@ -839,7 +839,6 @@ for modId in ${activemods//,/ }; do
   fi
 done
 
-restart_necessaire="oui"
 eval 'echo -e "\e[44m\u2263\u2263  \e[0m \e[44m \e[1mREDÉMARRAGE DU SERVEUR  \e[0m \e[44m  \e[0m \e[44m \e[0m \e[34m\u2759\e[0m"' $mon_log_perso
 if [[ "$restart_necessaire" == "oui" ]]; then
   #### Recupération des infos serveur ARK
