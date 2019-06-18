@@ -3,13 +3,13 @@
 ########################
 ## Script de Z0uZOU
 ########################
-## Installation: wget -q https://pastebin.com/raw/0ZkAG5XQ -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && shc -f updatemods.sh -o updatemods.bin && chmod +x updatemods.bin && rm -f *.x.c && rm -f updatemods.sh
-## Installation: wget -q https://pastebin.com/raw/0ZkAG5XQ -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && chmod +x updatemods.sh
+## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && shc -f updatemods.sh -o updatemods.bin && chmod +x updatemods.bin && rm -f *.x.c && rm -f updatemods.sh
+## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && chmod +x updatemods.sh
 ## Micro-config
 version="Version: 0.0.0.58" #base du système de mise à jour
 description="Téléchargeur de Mods pour ARK: Survival Evolved" #description pour le menu
-script_pastebin="https://pastebin.com/raw/0ZkAG5XQ" #emplacement du script original
-changelog_pastebin="https://pastebin.com/raw/vJpabVtT" #emplacement du changelog de ce script
+script_github="https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh" #emplacement du script original
+changelog_github="https://pastebin.com/raw/vJpabVtT" #emplacement du changelog de ce script
 icone_imgur="http://i.imgur.com/dasbwhC.png" #emplacement de l'icône du script
 required_repos="ppa:neurobin/ppa" #ajout de repository
 required_tools="curl shc steamcmd" #dépendances du script
@@ -121,7 +121,7 @@ if [[ "$1" == "--purge-log" ]]; then
   exit 1
 fi
 if [[ "$1" == "--changelog" ]]; then
-  wget -q -O- $changelog_pastebin
+  wget -q -O- $changelog_github
   echo ""
   exit 1
 fi
@@ -184,7 +184,7 @@ if [[ -f "$mon_script_config" ]] ; then
   source $mon_script_config
 else
     if [[ "$script_url" != "" ]] ; then
-      script_pastebin=$script_url
+      script_github=$script_url
     fi
     if [[ "$maj_force" == "" ]] ; then
       maj_force="non"
@@ -250,7 +250,7 @@ if [[ -f "$mon_script_updater" ]] ; then
 fi
  
 #### Vérification de version pour éventuelle mise à jour
-version_distante=`wget -O- -q "$script_pastebin" | grep "Version:" | awk '{ print $2 }' | sed -n 1p | awk '{print $1}' | sed -e 's/\r//g' | sed 's/"//g'`
+version_distante=`wget -O- -q "$script_github" | grep "Version:" | awk '{ print $2 }' | sed -n 1p | awk '{print $1}' | sed -e 's/\r//g' | sed 's/"//g'`
 version_locale=`echo $version | awk '{print $2}'`
  
 vercomp () {
@@ -303,7 +303,7 @@ if [[ "$compare" != "" ]] ; then
   chmod +x $mon_script_updater
   echo "#!/bin/bash" >> $mon_script_updater
   mon_script_fichier_temp=`echo $mon_script_fichier"-temp"`
-  echo "wget -q $script_pastebin -O $mon_script_fichier_temp" >> $mon_script_updater
+  echo "wget -q $script_github -O $mon_script_fichier_temp" >> $mon_script_updater
   echo "sed -i -e 's/\r//g' $mon_script_fichier_temp" >> $mon_script_updater
   if [[ "$mon_script_fichier" =~ \.sh$ ]]; then
     echo "mv $mon_script_fichier_temp $mon_script_fichier" >> $mon_script_updater
