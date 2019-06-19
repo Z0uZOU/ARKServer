@@ -6,7 +6,7 @@
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && shc -f updatemods.sh -o updatemods.bin && chmod +x updatemods.bin && rm -f *.x.c && rm -f updatemods.sh
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && chmod +x updatemods.sh
 ## Micro-config
-version="Version: 0.0.0.59" #base du système de mise à jour
+version="Version: 0.0.0.60" #base du système de mise à jour
 description="Téléchargeur de Mods pour ARK: Survival Evolved" #description pour le menu
 script_github="https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh" #emplacement du script original
 changelog_github="https://pastebin.com/raw/vJpabVtT" #emplacement du changelog de ce script
@@ -411,6 +411,8 @@ token_app=""
 destinataire_1=""
 destinataire_2=""
 titre_push=""
+push_maj_mod="oui"
+push_maj_serveur="oui"
  
 ####################################
 ## Fin de configuration
@@ -585,20 +587,22 @@ if [ -n "$nom_serveur" ] && [ -n "$chemin_serveur" ]; then
     eval 'echo -e "[\e[42m\u2713 \e[0m] Une mise à jour du serveur $nom_serveur est disponible:"' $mon_log_perso
     eval 'echo -e " ... Build actuelle: $RED$currentbuild$NORMAL"' $mon_log_perso
     eval 'echo -e " ... Build disponible: $GREEN$availablebuild$NORMAL"' $mon_log_perso
-    message_maj=`echo -e "Une mise à jour du serveur $nom_serveur est disponible.\n<b>Version actuelle:</b> "$currentbuild"\n<b>Version disponible:</b> "$availablebuild`
-    for user in {1..10}; do
-      destinataire=`eval echo "\\$destinataire_"$user`
-      if [ -n "$destinataire" ]; then
-        curl -s \
-          --form-string "token=$token_app" \
-          --form-string "user=$destinataire" \
-          --form-string "title=Mise à jour disponible" \
-          --form-string "message=$message_maj" \
-          --form-string "html=1" \
-          --form-string "priority=-1" \
-          https://api.pushover.net/1/messages.json > /dev/null
-      fi
-    done
+    if [[ "$push_maj_serveur" == "oui" ]]; then
+      message_maj=`echo -e "Une mise à jour du serveur $nom_serveur est disponible.\n<b>Version actuelle:</b> "$currentbuild"\n<b>Version disponible:</b> "$availablebuild`
+      for user in {1..10}; do
+        destinataire=`eval echo "\\$destinataire_"$user`
+        if [ -n "$destinataire" ]; then
+          curl -s \
+            --form-string "token=$token_app" \
+            --form-string "user=$destinataire" \
+            --form-string "title=Mise à jour disponible" \
+            --form-string "message=$message_maj" \
+            --form-string "html=1" \
+            --form-string "priority=-1" \
+            https://api.pushover.net/1/messages.json > /dev/null
+        fi
+      done
+    fi
   else
     eval 'echo -e "[\e[42m\u2713 \e[0m] Serveur à jour $nom_serveur:"' $mon_log_perso
     eval 'echo -e " ... Build actuelle: $GREEN$currentbuild$NORMAL"' $mon_log_perso
@@ -828,6 +832,23 @@ for modId in ${activemods//,/ }; do
             message=$message" vers "$modDestDir
           fi
           eval 'echo -e $message' $mon_log_perso
+          
+          if [[ "$push_maj_mod" == "oui" ]]; then
+            message_maj=`echo -e "Une mise à jour du mod "$modName" ("$modId") est instalée.\nLe redémarrage du serveur s'effectuera après la procédure de mise à jour."`
+            for user in {1..10}; do
+              destinataire=`eval echo "\\$destinataire_"$user`
+              if [ -n "$destinataire" ]; then
+                curl -s \
+                  --form-string "token=$token_app" \
+                  --form-string "user=$destinataire" \
+                  --form-string "title=Mise à jour mod" \
+                  --form-string "message=$message_maj" \
+                  --form-string "html=1" \
+                  --form-string "priority=-1" \
+                  https://api.pushover.net/1/messages.json > /dev/null
+              fi
+            done
+          fi
         fi
       fi
     echo " ---"
@@ -861,12 +882,12 @@ if [[ "$restart_necessaire" == "oui" ]]; then
   ### Création du script de reboot du serveur
   chmod 777 -R "$chemin_serveur"
   chown $user_arkserver:$user_arkserver -R "$chemin_serveur"
-  echo "#!/bin/bash" > /opt/scripts/ark-restart.sh
-  echo "mon_printf=\"\\r                                                                                           \"" >> /opt/scripts/ark-restart.sh
   numero_serveur=0
   while [[ $numero_serveur != $nombre_serveur ]]; do  
     process_arkserver=`ps aux | grep "./ShooterGameServer ${map_serveurs[$numero_serveur]}" | grep "?Port=${port_serveurs[$numero_serveur]}?" | sed '/grep/d' | awk '{print $2}'`
     if [[ "$process_arkserver" != "" ]]; then
+      echo "#!/bin/bash" > /opt/scripts/ark-restart.sh
+      echo "mon_printf=\"\\r                                                                                           \"" >> /opt/scripts/ark-restart.sh
       echo "bash \"$chemin_serveur/${sh_serveurs[$numero_serveur]}\" restart > /opt/scripts/ark-restart.log &" >> /opt/scripts/ark-restart.sh
       echo "pid=\$!" >> /opt/scripts/ark-restart.sh
       echo "spin='-\|/'" >> /opt/scripts/ark-restart.sh
@@ -879,17 +900,48 @@ if [[ "$restart_necessaire" == "oui" ]]; then
       echo "done" >> /opt/scripts/ark-restart.sh
       echo "printf \"\$mon_printf\" && printf \"\\r\"" >> /opt/scripts/ark-restart.sh
       echo "echo -e \"\\r[\\e[42m\\u2713 \e[0m] Redémarrage du serveur ${sessionname_serveurs[$numero_serveur]}\"" >> /opt/scripts/ark-restart.sh
-      restart="oui"
-    fi
-    numero_serveur=$(expr $numero_serveur + 1)
-  done
-  chmod +x /opt/scripts/ark-restart.sh
-  if [[ "$restart" == "oui" ]]; then
+      chmod +x /opt/scripts/ark-restart.sh
 su $user_arkserver <<'EOF'
 bash /opt/scripts/ark-restart.sh
 EOF
-  else
+      restart="oui"
+      if [[ "$push_maj_serveur" == "oui" ]]; then
+        message_reboot=`echo -e "Le redémarrage du serveur "${sessionname_serveurs[$numero_serveur]}" a été effectué."`
+        for user in {1..10}; do
+          destinataire=`eval echo "\\$destinataire_"$user`
+          if [ -n "$destinataire" ]; then
+            curl -s \
+              --form-string "token=$token_app" \
+              --form-string "user=$destinataire" \
+              --form-string "title=Redémarrage du serveur" \
+              --form-string "message=$message_reboot" \
+              --form-string "html=1" \
+              --form-string "priority=-1" \
+              https://api.pushover.net/1/messages.json > /dev/null
+          fi
+        done
+      fi
+    fi
+    numero_serveur=$(expr $numero_serveur + 1)
+  done
+  if [[ "$restart" != "oui" ]]; then
     eval 'echo -e "\r[\e[42m\u2713 \e[0m] Pas de nécessité de redémarrer le serveur"' $mon_log_perso
+    if [[ "$push_maj_serveur" == "oui" ]]; then
+      message_reboot=`echo -e "Pas de nécessité de redémarrer le serveur : aucun serveur démarré."`
+      for user in {1..10}; do
+        destinataire=`eval echo "\\$destinataire_"$user`
+        if [ -n "$destinataire" ]; then
+          curl -s \
+            --form-string "token=$token_app" \
+            --form-string "user=$destinataire" \
+            --form-string "title=Redémarrage du serveur" \
+            --form-string "message=$message_reboot" \
+            --form-string "html=1" \
+            --form-string "priority=-1" \
+            https://api.pushover.net/1/messages.json > /dev/null
+        fi
+      done
+    fi
   fi
   rm -f /opt/scripts/ark-restart.*
 else
