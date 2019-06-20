@@ -6,7 +6,7 @@
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && shc -f updatemods.sh -o updatemods.bin && chmod +x updatemods.bin && rm -f *.x.c && rm -f updatemods.sh
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && chmod +x updatemods.sh
 ## Micro-config
-version="Version: 0.0.0.60" #base du système de mise à jour
+version="Version: 0.0.0.61" #base du système de mise à jour
 description="Téléchargeur de Mods pour ARK: Survival Evolved" #description pour le menu
 script_github="https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh" #emplacement du script original
 changelog_github="https://pastebin.com/raw/vJpabVtT" #emplacement du changelog de ce script
@@ -233,7 +233,7 @@ if [[ -f "$mon_script_updater" ]] ; then
   rm "$mon_script_updater"
   source $mon_script_config 2>/dev/null
   version_maj=`echo $version | awk '{print $2}'`
-  message_maj=`echo -e "Le progamme $mon_script_base est désormais en version $version_maj"`
+  message_maj=`echo -e "Le progamme $mon_script_base est désormais en version $version_maj sur $computer_name"`
   for user in {1..10}; do
     destinataire=`eval echo "\\$destinataire_"$user`
     if [ -n "$destinataire" ]; then
@@ -545,7 +545,10 @@ GREEN="\\033[1;32m"
 RED="\\033[1;31m"
 YELLOW="\\e[0;33m"
 NORMAL="\\033[0;39m"
+
 restart_necessaire="" # Variable permettant le restart du serveur
+script_discord="/opt/scripts/discord.sh --text"
+annonce_discord="non"
  
 eval 'echo -e "\e[44m\u2263\u2263  \e[0m \e[44m \e[1mINFORMATIONS SERVEUR  \e[0m \e[44m  \e[0m \e[44m \e[0m \e[34m\u2759\e[0m"' $mon_log_perso
 
@@ -587,6 +590,8 @@ if [ -n "$nom_serveur" ] && [ -n "$chemin_serveur" ]; then
     eval 'echo -e "[\e[42m\u2713 \e[0m] Une mise à jour du serveur $nom_serveur est disponible:"' $mon_log_perso
     eval 'echo -e " ... Build actuelle: $RED$currentbuild$NORMAL"' $mon_log_perso
     eval 'echo -e " ... Build disponible: $GREEN$availablebuild$NORMAL"' $mon_log_perso
+    bash $script_discord ":construction: Une mise à jour du server $nom_serveur est disponible, un reboot sera effectué sous peu :construction:"
+    annonce_discord="oui"
     if [[ "$push_maj_serveur" == "oui" ]]; then
       message_maj=`echo -e "Une mise à jour du serveur $nom_serveur est disponible.\n<b>Version actuelle:</b> "$currentbuild"\n<b>Version disponible:</b> "$availablebuild`
       for user in {1..10}; do
@@ -832,23 +837,26 @@ for modId in ${activemods//,/ }; do
             message=$message" vers "$modDestDir
           fi
           eval 'echo -e $message' $mon_log_perso
-          
-          if [[ "$push_maj_mod" == "oui" ]]; then
-            message_maj=`echo -e "Une mise à jour du mod "$modName" ("$modId") est instalée.\nLe redémarrage du serveur s'effectuera après la procédure de mise à jour."`
-            for user in {1..10}; do
-              destinataire=`eval echo "\\$destinataire_"$user`
-              if [ -n "$destinataire" ]; then
-                curl -s \
-                  --form-string "token=$token_app" \
-                  --form-string "user=$destinataire" \
-                  --form-string "title=Mise à jour mod" \
-                  --form-string "message=$message_maj" \
-                  --form-string "html=1" \
-                  --form-string "priority=-1" \
-                  https://api.pushover.net/1/messages.json > /dev/null
-              fi
-            done
-          fi
+        fi
+        if [[ "$annonce_discord" != "oui" ]]; then
+          bash $script_discord ":construction: Une mise à jour d'un mod est disponible, un reboot sera effectué sous peu :construction:"
+          annonce_discord="oui"
+        fi
+        if [[ "$push_maj_mod" == "oui" ]]; then
+          message_maj=`echo -e "Une mise à jour du mod "$modName" ("$modId") est instalée.\nLe redémarrage du serveur s'effectuera après la procédure de mise à jour."`
+          for user in {1..10}; do
+            destinataire=`eval echo "\\$destinataire_"$user`
+            if [ -n "$destinataire" ]; then
+              curl -s \
+                --form-string "token=$token_app" \
+                --form-string "user=$destinataire" \
+                --form-string "title=Mise à jour mod" \
+                --form-string "message=$message_maj" \
+                --form-string "html=1" \
+                --form-string "priority=-1" \
+                https://api.pushover.net/1/messages.json > /dev/null
+            fi
+          done
         fi
       fi
     echo " ---"
@@ -888,6 +896,7 @@ if [[ "$restart_necessaire" == "oui" ]]; then
     if [[ "$process_arkserver" != "" ]]; then
       echo "#!/bin/bash" > /opt/scripts/ark-restart.sh
       echo "mon_printf=\"\\r                                                                                           \"" >> /opt/scripts/ark-restart.sh
+      echo "bash $script_discord \":construction: Redémarrage du serveur ${sessionname_serveurs[$numero_serveur]} :construction:\"" >> /opt/scripts/ark-restart.sh
       echo "bash \"$chemin_serveur/${sh_serveurs[$numero_serveur]}\" restart > /opt/scripts/ark-restart.log &" >> /opt/scripts/ark-restart.sh
       echo "pid=\$!" >> /opt/scripts/ark-restart.sh
       echo "spin='-\|/'" >> /opt/scripts/ark-restart.sh
@@ -900,6 +909,7 @@ if [[ "$restart_necessaire" == "oui" ]]; then
       echo "done" >> /opt/scripts/ark-restart.sh
       echo "printf \"\$mon_printf\" && printf \"\\r\"" >> /opt/scripts/ark-restart.sh
       echo "echo -e \"\\r[\\e[42m\\u2713 \e[0m] Redémarrage du serveur ${sessionname_serveurs[$numero_serveur]}\"" >> /opt/scripts/ark-restart.sh
+      echo "bash $script_discord \":construction: Le serveur ${sessionname_serveurs[$numero_serveur]} est redémarré, veuillez patienter quelques instants :construction:\"" >> /opt/scripts/ark-restart.sh
       chmod +x /opt/scripts/ark-restart.sh
 su $user_arkserver <<'EOF'
 bash /opt/scripts/ark-restart.sh
