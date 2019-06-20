@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-version="0.0.0.7"
+version="0.0.0.8"
 
 
 #### Mes paramètres
@@ -246,7 +246,11 @@ liste_serveurs=`locate \/arkserver | grep "$chemin_serveur" | sed '/\/usb_save\/
 arkserver_GameUserSettings=`echo $chemin_serveur"/serverfiles/ShooterGame/Saved/Config/LinuxServer/GameUserSettings.ini"`
 server_password=`cat "$arkserver_GameUserSettings" | grep "^ServerPassword=" | sed -e "s/ServerPassword=//g"`
 server_admin_password=`cat "$arkserver_GameUserSettings" | grep "^ServerAdminPassword=" | sed -e "s/ServerAdminPassword=//g"`
-if [[ "$asterisk" == "TRUE" ]]; then server_admin_password=`echo $server_admin_password | tr "[[:print:]]" "#"`; fi
+if [[ "$asterisk" == "TRUE" ]]; then
+  server_admin_password_affichage=`echo $server_admin_password | tr "[[:print:]]" "#"`
+else
+  server_admin_password_affichage=$server_admin_password
+fi
 server_version=`cat "$chemin_serveur/serverfiles/version.txt" | sed -e 's/ //g'`
 activemods=`cat "$arkserver_GameUserSettings" | grep "^ActiveMods=" | sed -e "s/ActiveMods=//g"`
 
@@ -338,12 +342,8 @@ fi
 #### Affichage
 if [[ "$process_hackts" == "" ]] || [[ "$process_teamspeak" == "" ]] || [[ "$process_tsbot" == "" ]]; then
   echo "Serveurs | image='$SERVER_ICON' imageWidth=20"
-  #echo -e "\e[41m  \e[0m Serveurs | image='$SERVER_ICON' imageWidth=25"
-  #echo -e "\e[41m   \e[0m Serveurs"
 else
   echo "Serveurs | image='$SERVER_ICON' imageWidth=20"
-  #echo -e "\e[42m  \e[0m Serveurs | image='$SERVER_ICON' imageWidth=25"
-  #echo -e "\e[42m   \e[0m Serveurs"
 fi
 echo "---"
 
@@ -383,7 +383,7 @@ process_arkserver=`ps aux | grep "./ShooterGameServer ${map_serveurs[$numero_ser
     printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":earth_africa:" "Adresse IP" "$ip_distante:${port_serveurs[$numero_serveur]}"
     if [[ "$server_password" != "" ]]; then printf "%-2s \u2514\u2500 \e[1m%-10s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" "Password" "$server_password"; fi
     printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":construction:" "Port RCON" "${rconport_serveurs[$numero_serveur]}"
-    printf "%-2s \u2514\u2500 \e[1m%-10s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" "Password" "$server_admin_password"
+    printf "%-2s \u2514\u2500 \e[1m%-10s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" "Password" "$server_admin_password_affichage"
     if [[ "$activemods" != "" ]]; then printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":construction:" "Mods" "$activemods"; fi
     mn_actuelle=`date +"%M"`
     if [[ "$mn_actuelle" == "00" ]] || [[ "$mn_actuelle" == "10" ]] || [[ "$mn_actuelle" == "20" ]] || [[ "$mn_actuelle" == "30" ]] || [[ "$mn_actuelle" == "40" ]] || [[ "$mn_actuelle" == "50" ]] || [[ ! -f "$HOME/.config/argos/arkserver/rcon_$numero_serveur.txt" ]]; then
