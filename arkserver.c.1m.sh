@@ -371,7 +371,10 @@ while [[ $numero_serveur != $nombre_serveur ]]; do
     ARK_SERVER_ICON=$ARKSERVER_ARK_Extinction
     arkserver_nom_map="Extinction"
   fi
-  process_arkserver=`ps aux | grep "./ShooterGameServer ${map_serveurs[$numero_serveur]}" | grep "?Port=${port_serveurs[$numero_serveur]}?" | sed '/grep/d' | awk '{print $2}'`
+  if [[ "${map_serveurs[$numero_serveur]}" == "Valguero_P" ]]; then
+    arkserver_nom_map="Valguero"
+  fi
+process_arkserver=`ps aux | grep "./ShooterGameServer ${map_serveurs[$numero_serveur]}" | grep "?Port=${port_serveurs[$numero_serveur]}?" | sed '/grep/d' | awk '{print $2}'`
   if [[ "$process_arkserver" != "" ]]; then
     ark_cpu=`ps -p $process_arkserver -o %cpu | sed -n '2p' | awk '{print $1}'`
     ark_mem=`ps -p $process_arkserver -o %mem | sed -n '2p' | awk '{print $1}'`
