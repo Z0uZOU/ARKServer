@@ -6,7 +6,7 @@
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && shc -f updatemods.sh -o updatemods.bin && chmod +x updatemods.bin && rm -f *.x.c && rm -f updatemods.sh
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && chmod +x updatemods.sh
 ## Micro-config
-version="Version: 0.0.0.61" #base du système de mise à jour
+version="Version: 0.0.0.62" #base du système de mise à jour
 description="Téléchargeur de Mods pour ARK: Survival Evolved" #description pour le menu
 script_github="https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh" #emplacement du script original
 changelog_github="https://pastebin.com/raw/vJpabVtT" #emplacement du changelog de ce script
@@ -566,20 +566,35 @@ printf "$mon_printf" && printf "\r"
 chemin_serveur=`locate \/arkserver | sed '/\/usb_save\//d' | sed '/\/lgsm\//d' | sed '/\/log\//d' | sed '/\/.config\/argos\//d' | grep "\/arkserver$" | xargs dirname`
 liste_serveurs=`locate \/arkserver | grep "$chemin_serveur" | sed '/\/usb_save\//d' | sed '/\/lgsm\//d' | sed '/\/log\//d' | sed -e "s|$chemin_serveur\/||g"`
 
-rm -rf ~/.steam/appcache
-steamcmd +login anonymous +app_info_update 1 +app_info_print 376030 +quit > $dossier_config/availablebuild.log &
+#rm -rf ~/.steam/appcache
+#steamcmd +login anonymous +app_info_update 1 +app_info_print 376030 +quit > $dossier_config/availablebuild.log &
+#pid=$!
+#spin='-\|/'
+#i=0
+#while kill -0 $pid 2>/dev/null
+#do
+#  i=$(( (i+1) %4 ))
+#  printf "\r[  ] Vérification de la version du serveur ... ${spin:$i:1}"
+#  sleep .1
+#done
+#printf "$mon_printf" && printf "\r"
+#availablebuild=`cat $dossier_config/availablebuild.log | grep -EA 1000 "^\s+\"branches\"$" | grep -EA 5 "^\s+\"public\"$" | grep -m 1 -EB 10 "^\s+}$" | grep -E "^\s+\"buildid\"\s+" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d' ' -f3`
+#rm $dossier_config/availablebuild.log
+
+url_steamdb="https://steamdb.info/app/376030/depots"
+wget -q --timeout=2 --waitretry=0 --tries=2  "$url_steamdb" -O "$dossier_config/steamdb.log" &
 pid=$!
 spin='-\|/'
 i=0
 while kill -0 $pid 2>/dev/null
 do
   i=$(( (i+1) %4 ))
-  printf "\r[  ] Vérification de la version du serveur ... ${spin:$i:1}"
+  printf "\r[  ] Vérification de la version du serveur sur SteamDB.info... ${spin:$i:1}"
   sleep .1
 done
 printf "$mon_printf" && printf "\r"
-availablebuild=`cat $dossier_config/availablebuild.log | grep -EA 1000 "^\s+\"branches\"$" | grep -EA 5 "^\s+\"public\"$" | grep -m 1 -EB 10 "^\s+}$" | grep -E "^\s+\"buildid\"\s+" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d' ' -f3`
-rm $dossier_config/availablebuild.log
+availablebuild=`cat "$dossier_config/steamdb.log" | grep "href=\"/patchnotes/" | grep "rel=\"nofollow\">" | sed -n 1p | sed 's|.*/patchnotes/||' | sed -e 's|/".*||'`
+rm $dossier_config/steamdb.log
 
 if [ -n "$nom_serveur" ] && [ -n "$chemin_serveur" ]; then
   currentbuild=`grep buildid "$chemin_serveur/serverfiles/steamapps/appmanifest_376030.acf" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d\  -f3`
