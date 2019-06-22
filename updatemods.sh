@@ -6,7 +6,7 @@
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && shc -f updatemods.sh -o updatemods.bin && chmod +x updatemods.bin && rm -f *.x.c && rm -f updatemods.sh
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && chmod +x updatemods.sh
 ## Micro-config
-version="Version: 0.0.0.62" #base du système de mise à jour
+version="Version: 0.0.0.63" #base du système de mise à jour
 description="Téléchargeur de Mods pour ARK: Survival Evolved" #description pour le menu
 script_github="https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh" #emplacement du script original
 changelog_github="https://pastebin.com/raw/vJpabVtT" #emplacement du changelog de ce script
@@ -14,7 +14,7 @@ icone_imgur="http://i.imgur.com/dasbwhC.png" #emplacement de l'icône du script
 required_repos="ppa:neurobin/ppa" #ajout de repository
 required_tools="curl shc steamcmd" #dépendances du script
 required_tools_pip="" #dépendances du script (PIP)
-script_cron="0 6 * * *" #ne définir que la planification
+script_cron="0 * * * *" #ne définir que la planification
 verification_process="" #si ces process sont détectés on ne notifie pas (ou ne lance pas en doublon)
 ########################
  
@@ -624,7 +624,7 @@ if [ -n "$nom_serveur" ] && [ -n "$chemin_serveur" ]; then
       done
     fi
   else
-    eval 'echo -e "[\e[42m\u2713 \e[0m] Serveur à jour $nom_serveur:"' $mon_log_perso
+    eval 'echo -e "[\e[42m\u2713 \e[0m] Serveur $nom_serveur à jour:"' $mon_log_perso
     eval 'echo -e " ... Build actuelle: $GREEN$currentbuild$NORMAL"' $mon_log_perso
   fi
 fi
