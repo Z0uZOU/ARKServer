@@ -6,7 +6,7 @@
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && shc -f updatemods.sh -o updatemods.bin && chmod +x updatemods.bin && rm -f *.x.c && rm -f updatemods.sh
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && chmod +x updatemods.sh
 ## Micro-config
-version="Version: 0.0.0.64" #base du système de mise à jour
+version="Version: 0.0.0.65" #base du système de mise à jour
 description="Téléchargeur de Mods pour ARK: Survival Evolved" #description pour le menu
 script_github="https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh" #emplacement du script original
 changelog_github="https://pastebin.com/raw/vJpabVtT" #emplacement du changelog de ce script
@@ -52,125 +52,132 @@ mon_script_log=`echo $mon_script_base".log"`
 mon_script_desktop=`echo $mon_script_base".desktop"`
 mon_script_updater=`echo $mon_script_base"-update.sh"`
  
+#### Initialisation des variables
+debug="non"
+force_dl="non"
+force_update="non"
+ 
 #### Tests des arguments
-if [[ "$1" == "--version" ]]; then
-  echo "$version"
-  exit 1
-fi
-if [[ "$1" == "--debug" ]] || [[ "$2" == "--debug" ]]; then
-  debug="yes"
-fi
-if [[ "$1" == "--edit-config" ]]; then
-  nano $mon_script_config
-  exit 1
-fi
-if [[ "$1" == "--debug" ]] || [[ "$2" == "--debug" ]]; then
-  debug="yes"
-fi
-if [[ "$1" == "--efface-lock" ]]; then
-  mon_lock=`echo "/root/.config/"$mon_script_base"/lock-"$mon_script_base`
-  rm -f "$mon_lock"
-  echo "Fichier lock effacé"
-  exit 1
-fi
-if [[ "$1" == "--statut-lock" ]]; then
-  statut_lock=`cat $mon_script_config | grep "maj_force=\"oui\""`
-  if [[ "$statut_lock" == "" ]]; then
-    echo "Système de lock activé"
-  else
-    echo "Système de lock désactivé"
+for parametre in $@; do
+  if [[ "$parametre" == "--version" ]]; then
+    echo "$version"
+    exit 1
   fi
-  exit 1
-fi
-if [[ "$1" == "--active-lock" ]]; then
-  sed -i 's/maj_force="oui"/maj_force="non"/g' $mon_script_config
-  echo "Système de lock activé"
-  exit 1
-fi
-if [[ "$1" == "--desactive-lock" ]]; then
-  sed -i 's/maj_force="non"/maj_force="oui"/g' $mon_script_config
-  echo "Système de lock désactivé"
-  exit 1
-fi
-if [[ "$1" == "--extra-log" ]] || [[ "$2" == "--extra-log" ]]; then
-  date_log=`date +%Y%m%d`
-  heure_log=`date +%H%M`
-  path_log=`echo "/root/.config/"$mon_script_base"/log/"$date_log`
-  mkdir -p $path_log 2>/dev/null
-  fichier_log_perso=`echo $path_log"/"$heure_log".log"`
-  mon_log_perso="| tee -a $fichier_log_perso"
-fi
-if [[ "$1" == "--purge-process" ]]; then
-  ps aux | grep $mon_script_base | awk '{print $2}' | xargs kill -9
-  echo "Les processus de ce script ont été tués"
-fi
-if [[ "$1" == "--purge-log" ]]; then
-  path_global_log=`echo "/root/.config/"$mon_script_base"/log"`
-  cd $path_global_log
-  mon_chemin=`echo $PWD`
-  if [[ "$mon_chemin" == "$path_global_log" ]]; then
-    printf "Êtes-vous sûr de vouloir effacer l'intégralité des logs de --extra-log? (oui/non) : "
-    read question_effacement
-    if [[ "$question_effacement" == "oui" ]]; then
-      rm -rf *
-      echo "Les logs ont été effacés"
+  if [[ "$parametre" == "--debug" ]]; then
+    debug="oui"
+  fi
+  if [[ "$parametre" == "--edit-config" ]]; then
+    nano $mon_script_config
+    exit 1
+  fi
+  if [[ "$parametre" == "--efface-lock" ]]; then
+    mon_lock=`echo "/root/.config/"$mon_script_base"/lock-"$mon_script_base`
+    rm -f "$mon_lock"
+    echo "Fichier lock effacé"
+    exit 1
+  fi
+  if [[ "$parametre" == "--statut-lock" ]]; then
+    statut_lock=`cat $mon_script_config | grep "maj_force=\"oui\""`
+    if [[ "$statut_lock" == "" ]]; then
+      echo "Système de lock activé"
+    else
+      echo "Système de lock désactivé"
     fi
-  else
-    echo "Une erreur est survenue, veuillez contacter le développeur"
+    exit 1
   fi
-  exit 1
-fi
-if [[ "$1" == "--changelog" ]]; then
-  wget -q -O- $changelog_github
-  echo ""
-  exit 1
-fi
-if [[ "$1" == --message=* ]]; then
-  source $mon_script_config
-  message=`echo "$1" | sed 's/--message=//g'`
-  curl -s \
-    --form-string "token=acy83vqos6h76yzpp3mhrt6saf25b4" \
-    --form-string "user=uauyi2fdfiu24k7xuwiwk92ovimgto" \
-    --form-string "title=$mon_script_base_maj MESSAGE" \
-    --form-string "message=$message" \
-    --form-string "html=1" \
-    --form-string "priority=0" \
-    https://api.pushover.net/1/messages.json > /dev/null
-  exit 1
-fi
-if [[ "$1" == "--help" ]]; then
-  path_log=`echo "/root/.config/"$mon_script_base"/log/"$date_log`
-  echo -e "\e[1m$mon_script_base_maj\e[0m ($version)"
-  echo "Objectif du programme: $description"
-  echo "Auteur: ZouZOU <zouzou.is.reborn@hotmail.fr>"
-  echo ""
-  echo "Utilisation: \"$mon_script_fichier [--option]\""
-  echo ""
-  echo -e "\e[4mOptions:\e[0m"
-  echo "  --version               Affiche la version de ce programme"
-  echo "  --edit-config           Édite la configuration de ce programme"
-  echo "  --extra-log             Génère un log à chaque exécution dans "$path_log
-  echo "  --debug                 Lance ce programme en mode debug"
-  echo "  --efface-lock           Supprime le fichier lock qui empêche l'exécution"
-  echo "  --statut-lock           Affiche le statut de la vérification de process doublon"
-  echo "  --active-lock           Active le système de vérification de process doublon"
-  echo "  --desactive-lock        Désactive le système de vérification de process doublon"
-  echo "  --maj-uniquement        N'exécute que la mise à jour"
-  echo "  --changelog             Affiche le changelog de ce programme"
-  echo "  --help                  Affiche ce menu"
-  echo ""
-  echo "Les options \"--debug\" et \"--extra-log\" sont cumulables"
-  echo ""
-  echo -e "\e[4mUtilisation avancée:\e[0m"
-  echo "  --message=\"...\"         Envoie un message push au développeur (urgence uniquement)"
-  echo "  --purge-log             Purge définitivement les logs générés par --extra-log"
-  echo "  --purge-process         Tue tout les processus générés par ce programme"
-  echo ""
-  echo -e "\e[3m ATTENTION: CE PROGRAMME DOIT ÊTRE EXÉCUTÉ AVEC LES PRIVILÈGES ROOT \e[0m"
-  echo "Des commandes comme les installations de dépendances ou les recherches nécessitent de tels privilèges."
-  echo ""
-  exit 1
-fi
+  if [[ "$parametre" == "--active-lock" ]]; then
+    sed -i 's/maj_force="oui"/maj_force="non"/g' $mon_script_config
+    echo "Système de lock activé"
+    exit 1
+  fi
+  if [[ "$parametre" == "--desactive-lock" ]]; then
+    sed -i 's/maj_force="non"/maj_force="oui"/g' $mon_script_config
+    echo "Système de lock désactivé"
+    exit 1
+  fi
+  if [[ "$parametre" == "--extra-log" ]]; then
+    date_log=`date +%Y%m%d`
+    heure_log=`date +%H%M`
+    path_log=`echo "/root/.config/"$mon_script_base"/log/"$date_log`
+    mkdir -p $path_log 2>/dev/null
+    fichier_log_perso=`echo $path_log"/"$heure_log".log"`
+    mon_log_perso="| tee -a $fichier_log_perso"
+  fi
+  if [[ "$parametre" == "--purge-process" ]]; then
+    ps aux | grep $mon_script_base | awk '{print $2}' | xargs kill -9
+    echo "Les processus de ce script ont été tués"
+  fi
+  if [[ "$parametre" == "--purge-log" ]]; then
+    path_global_log=`echo "/root/.config/"$mon_script_base"/log"`
+    cd $path_global_log
+    mon_chemin=`echo $PWD`
+    if [[ "$mon_chemin" == "$path_global_log" ]]; then
+      printf "Êtes-vous sûr de vouloir effacer l'intégralité des logs de --extra-log? (oui/non) : "
+      read question_effacement
+      if [[ "$question_effacement" == "oui" ]]; then
+        rm -rf *
+        echo "Les logs ont été effacés"
+      fi
+    else
+      echo "Une erreur est survenue, veuillez contacter le développeur"
+    fi
+    exit 1
+  fi
+  if [[ "$parametre" == "--changelog" ]]; then
+    wget -q -O- $changelog_github
+    echo ""
+    exit 1
+  fi
+  if [[ "$parametre" == --message=* ]]; then
+    source $mon_script_config
+    message=`echo "$parametre" | sed 's/--message=//g'`
+    curl -s \
+      --form-string "token=acy83vqos6h76yzpp3mhrt6saf25b4" \
+      --form-string "user=uauyi2fdfiu24k7xuwiwk92ovimgto" \
+      --form-string "title=$mon_script_base_maj MESSAGE" \
+      --form-string "message=$message" \
+      --form-string "html=1" \
+      --form-string "priority=0" \
+      https://api.pushover.net/1/messages.json > /dev/null
+    exit 1
+  fi
+  if [[ "$parametre" == "--force-dl" ]]; then
+    force_dl="oui"
+  fi
+  if [[ "$parametre" == "--help" ]]; then
+    path_log=`echo "/root/.config/"$mon_script_base"/log/"$date_log`
+    echo -e "\e[1m$mon_script_base_maj\e[0m ($version)"
+    echo "Objectif du programme: $description"
+    echo "Auteur: ZouZOU <zouzou.is.reborn@hotmail.fr>"
+    echo ""
+    echo "Utilisation: \"$mon_script_fichier [--option]\""
+    echo ""
+    echo -e "\e[4mOptions:\e[0m"
+    echo "  --version               Affiche la version de ce programme"
+    echo "  --edit-config           Édite la configuration de ce programme"
+    echo "  --extra-log             Génère un log à chaque exécution dans "$path_log
+    echo "  --debug                 Lance ce programme en mode debug"
+    echo "  --efface-lock           Supprime le fichier lock qui empêche l'exécution"
+    echo "  --statut-lock           Affiche le statut de la vérification de process doublon"
+    echo "  --active-lock           Active le système de vérification de process doublon"
+    echo "  --desactive-lock        Désactive le système de vérification de process doublon"
+    echo "  --maj-uniquement        N'exécute que la mise à jour"
+    echo "  --changelog             Affiche le changelog de ce programme"
+    echo "  --help                  Affiche ce menu"
+    echo ""
+    echo "Les options \"--debug\" et \"--extra-log\" sont cumulables"
+    echo ""
+    echo -e "\e[4mUtilisation avancée:\e[0m"
+    echo "  --message=\"...\"         Envoie un message push au développeur (urgence uniquement)"
+    echo "  --purge-log             Purge définitivement les logs générés par --extra-log"
+    echo "  --purge-process         Tue tout les processus générés par ce programme"
+    echo ""
+    echo -e "\e[3m ATTENTION: CE PROGRAMME DOIT ÊTRE EXÉCUTÉ AVEC LES PRIVILÈGES ROOT \e[0m"
+    echo "Des commandes comme les installations de dépendances ou les recherches nécessitent de tels privilèges."
+    echo ""
+    exit 1
+  fi
+done
  
 #### je dois charger le fichier conf ici ou trouver une solution (script_url et maj_force)
 dossier_config=`echo "/root/.config/"$mon_script_base`
@@ -545,13 +552,12 @@ GREEN="\\033[1;32m"
 RED="\\033[1;31m"
 YELLOW="\\e[0;33m"
 NORMAL="\\033[0;39m"
-
+ 
 restart_necessaire="" # Variable permettant le restart du serveur
 script_discord="/opt/scripts/discord.sh --text"
 annonce_discord="non"
  
 eval 'echo -e "\e[44m\u2263\u2263  \e[0m \e[44m \e[1mINFORMATIONS SERVEUR  \e[0m \e[44m  \e[0m \e[44m \e[0m \e[34m\u2759\e[0m"' $mon_log_perso
-
 updatedb &
 pid=$!
 spin='-\|/'
@@ -566,7 +572,7 @@ printf "$mon_printf" && printf "\r"
 chemin_serveur=`locate \/arkserver | sed '/\/usb_save\//d' | sed '/\/lgsm\//d' | sed '/\/log\//d' | sed '/\/.config\/argos\//d' | grep "\/arkserver$" | xargs dirname`
 liste_serveurs=`locate \/arkserver | grep "$chemin_serveur" | sed '/\/usb_save\//d' | sed '/\/lgsm\//d' | sed '/\/log\//d' | sed -e "s|$chemin_serveur\/||g"`
 
-#rm -rf ~/.steam/appcache
+rm -rf ~/.steam/appcache
 #steamcmd +login anonymous +app_info_update 1 +app_info_print 376030 +quit > $dossier_config/availablebuild.log &
 #pid=$!
 #spin='-\|/'
@@ -673,11 +679,15 @@ for modId in ${activemods//,/ }; do
   info_version_mod_disponible=`curl -s "https://steamcommunity.com/sharedfiles/filedetails/?id=$modId" | sed -n 's|^.*<div class="detailsStatRight">\([^<]*\)</div>.*|\1|p'`
   info_version_mod_disponible=`echo $info_version_mod_disponible | cut -d" " -f8-`
   info_version_mod_local=""
-  if [[ -f "$modExtractDir/.updatemods.info" ]];then 
+  if [[ -f "$modExtractDir/.updatemods.info" ]] && [[ "$force_dl" == "non" ]] ;then 
     info_version_mod_local=`cat "$modExtractDir/.updatemods.info"`
   fi
   if [ "$info_version_mod_disponible" != "$info_version_mod_local" ]; then
-    eval 'echo -e "[\e[41m\u2717 \e[0m] Mise à jour du mod $modName ($modId) nécessaire"' $mon_log_perso
+    if [[ "$force_dl" == "non" ]]; then
+      eval 'echo -e "[\e[41m\u2717 \e[0m] Mise à jour du mod $modName ($modId) nécessaire"' $mon_log_perso
+    else
+      eval 'echo -e "[\e[41m\u2717 \e[0m] Mise à jour du mod $modName ($modId) demandé"' $mon_log_perso
+    fi
     steamcmd +login anonymous +workshop_download_item 346110 $modId +quit > steamdl.log &
     pid=$!
     spin='-\|/'
