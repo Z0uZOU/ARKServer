@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-version="0.0.0.10"
+version="0.0.0.11"
 
 
 #### Mes paramètres
@@ -466,25 +466,27 @@ process_arkserver=`ps aux | grep "./ShooterGameServer ${map_serveurs[$numero_ser
 done
 
 ## TS
-if [[ "$process_teamspeak" != "" ]]; then
-echo "---"
-  printf "\e[1m%-21s :\e[0m %-3s | image='$ARKSERVER_TS' ansi=true font='Ubuntu Mono' trim=false imageWidth=18 \n" "Serveur TS" ":heavy_check_mark:"
-  printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":arrow_forward:" "Numero du process" "$process_teamspeak"
-  printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":arrow_forward:" "Utilisation CPU" "$ts_cpu"
-  printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":arrow_forward:" "Utilisation MEM" "$ts_mem"
-else
-echo "---"
-  printf "\e[1m%-21s :\e[0m %-3s | image='$ARKSERVER_TS' ansi=true font='Ubuntu Mono' trim=false imageWidth=18 \n" "Serveur TS" ":x:"
-fi
-if [[ "$process_hackts" != "" ]]; then
-  printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":heavy_check_mark:" "Hack TS" "PID $process_hackts"
-else
-  printf "%-2s %-3s \e[1m%-18s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":x:" "Hack TS"
-fi
-if [[ "$process_tsbot" != "" ]]; then
-  printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":heavy_check_mark:" "Bot TS" "PID $process_tsbot"
-else
-  printf "%-2s %-3s \e[1m%-18s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":x:" "Bot TS"
+if [[ "$process_teamspeak" != "" ]] || [[ "$process_hackts" != "" ]]; then
+  echo "---"
+  if [[ "$process_teamspeak" != "" ]]; then
+    printf "\e[1m%-21s :\e[0m %-3s | image='$ARKSERVER_TS' ansi=true font='Ubuntu Mono' trim=false imageWidth=18 \n" "Serveur TS" ":heavy_check_mark:"
+    printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":arrow_forward:" "Numero du process" "$process_teamspeak"
+    printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":arrow_forward:" "Utilisation CPU" "$ts_cpu"
+    printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":arrow_forward:" "Utilisation MEM" "$ts_mem"
+  else
+  echo "---"
+    printf "\e[1m%-21s :\e[0m %-3s | image='$ARKSERVER_TS' ansi=true font='Ubuntu Mono' trim=false imageWidth=18 \n" "Serveur TS" ":x:"
+  fi
+  if [[ "$process_hackts" != "" ]]; then
+    printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":heavy_check_mark:" "Hack TS" "PID $process_hackts"
+  else
+    printf "%-2s %-3s \e[1m%-18s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":x:" "Hack TS"
+  fi
+  if [[ "$process_tsbot" != "" ]]; then
+    printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":heavy_check_mark:" "Bot TS" "PID $process_tsbot"
+  else
+    printf "%-2s %-3s \e[1m%-18s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":x:" "Bot TS"
+  fi
 fi
 
 ## Users TS
