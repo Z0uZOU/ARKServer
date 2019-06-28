@@ -6,7 +6,7 @@
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && shc -f updatemods.sh -o updatemods.bin && chmod +x updatemods.bin && rm -f *.x.c && rm -f updatemods.sh
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && chmod +x updatemods.sh
 ## Micro-config
-version="Version: 0.0.0.65" #base du système de mise à jour
+version="Version: 0.0.0.66" #base du système de mise à jour
 description="Téléchargeur de Mods pour ARK: Survival Evolved" #description pour le menu
 script_github="https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh" #emplacement du script original
 changelog_github="https://pastebin.com/raw/vJpabVtT" #emplacement du changelog de ce script
@@ -143,6 +143,9 @@ for parametre in $@; do
   fi
   if [[ "$parametre" == "--force-dl" ]]; then
     force_dl="oui"
+  fi
+  if [[ "$parametre" == "--force-update" ]]; then
+    force_update="oui"
   fi
   if [[ "$parametre" == "--help" ]]; then
     path_log=`echo "/root/.config/"$mon_script_base"/log/"$date_log`
@@ -547,6 +550,19 @@ fi
  
 cd /opt/scripts
  
+#### vérification de la présence de 'rcon'
+if [[ ! -f "$dossier_config/rcon" ]] ; then
+  printf "\r[  ] Installation de la dépendance rcon ..."
+  wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/prerequisites/rcon.c -O $dossier_config/rcon.c > /dev/null
+  gcc $dossier_config/rcon.c -o $dossier_config/rcon > /dev/null
+  chmod ugo+rx $dossier_config/rcon > /dev/null
+  rm $dossier_config/rcon.c > /dev/null
+  printf "$mon_printf" && printf "\r"
+  eval 'echo -e "[\e[42m\u2713 \e[0m] La dépendance: rcon est installée"' $mon_log_perso
+else
+  eval 'echo -e "[\e[42m\u2713 \e[0m] La dépendance: rcon est installée"' $mon_log_perso
+fi
+
 ### Déclaration des variables pour les couleurs des textes
 GREEN="\\033[1;32m"
 RED="\\033[1;31m"
@@ -558,6 +574,14 @@ script_discord="/opt/scripts/discord.sh --text"
 annonce_discord="non"
  
 eval 'echo -e "\e[44m\u2263\u2263  \e[0m \e[44m \e[1mINFORMATIONS SERVEUR  \e[0m \e[44m  \e[0m \e[44m \e[0m \e[34m\u2759\e[0m"' $mon_log_perso
+sh_serveurs=()
+map_serveurs=()
+sessionname_serveurs=()
+port_serveurs=()
+rconport_serveurs=()
+players_serveurs=()
+ip_locale=`hostname -I | cut -d' ' -f1`
+
 updatedb &
 pid=$!
 spin='-\|/'
@@ -565,27 +589,65 @@ i=0
 while kill -0 $pid 2>/dev/null
 do
   i=$(( (i+1) %4 ))
-  printf "\r[  ] Vérification de la version du serveur ... ${spin:$i:1}"
+  printf "\r[  ] Détection de nombre de joueurs connectés au serveur ... ${spin:$i:1}"
   sleep .1
 done
 printf "$mon_printf" && printf "\r"
+
+#### recherche du chemin et de la liste des serveurs
+printf "\r[  ] Détection de nombre de joueurs connectés au serveur ..."
 chemin_serveur=`locate \/arkserver | sed '/\/usb_save\//d' | sed '/\/lgsm\//d' | sed '/\/log\//d' | sed '/\/.config\/argos\//d' | grep "\/arkserver$" | xargs dirname`
 liste_serveurs=`locate \/arkserver | grep "$chemin_serveur" | sed '/\/usb_save\//d' | sed '/\/lgsm\//d' | sed '/\/log\//d' | sed -e "s|$chemin_serveur\/||g"`
+arkserver_GameUserSettings=`echo $chemin_serveur"/serverfiles/ShooterGame/Saved/Config/LinuxServer/GameUserSettings.ini"`
+server_admin_password=`cat "$arkserver_GameUserSettings" | grep "^ServerAdminPassword=" | sed -e "s/ServerAdminPassword=//g"`
 
-rm -rf ~/.steam/appcache
-#steamcmd +login anonymous +app_info_update 1 +app_info_print 376030 +quit > $dossier_config/availablebuild.log &
-#pid=$!
-#spin='-\|/'
-#i=0
-#while kill -0 $pid 2>/dev/null
-#do
-#  i=$(( (i+1) %4 ))
-#  printf "\r[  ] Vérification de la version du serveur ... ${spin:$i:1}"
-#  sleep .1
-#done
-#printf "$mon_printf" && printf "\r"
-#availablebuild=`cat $dossier_config/availablebuild.log | grep -EA 1000 "^\s+\"branches\"$" | grep -EA 5 "^\s+\"public\"$" | grep -m 1 -EB 10 "^\s+}$" | grep -E "^\s+\"buildid\"\s+" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d' ' -f3`
-#rm $dossier_config/availablebuild.log
+numero_serveur=0
+players_total_serveur=0
+for sh_actuel in $liste_serveurs ; do
+  sh_serveurs+=("$sh_actuel")
+  if [[ -f "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" ]]; then
+    map_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "^defaultmap=" | sed -e "s/defaultmap=\"//g" | sed -e "s/\"//g"`)
+    serveur_name=`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "SessionName=" | sed 's/.*SessionName=//g' | sed 's/?.*//g'`
+    sessionname_serveurs+=("$serveur_name")
+    port_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "^port=" | sed -e "s/port=\"//g" | sed -e "s/\"//g"`)
+    queryport_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "^queryport=" | sed -e "s/queryport=\"//g" | sed -e "s/\"//g"`)
+    rconport_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "^rconport=" | sed -e "s/rconport=\"//g" | sed -e "s/\"//g"`)
+    process_arkserver=`ps aux | grep "./ShooterGameServer ${map_serveurs[$numero_serveur]}" | grep "?Port=${port_serveurs[$numero_serveur]}?" | sed '/grep/d' | awk '{print $2}'`
+    if [[ "$process_arkserver" != "" ]]; then
+      $dossier_config/rcon -P$server_admin_password -a$ip_locale -p${rconport_serveurs[$numero_serveur]} listplayers > $dossier_config/rcon_$numero_serveur.txt
+      players_connected=`cat $dossier_config/rcon_$numero_serveur.txt | grep "No Players Connected"`
+      if [[ "$players_connected" == "" ]]; then
+        cat $dossier_config/rcon_$numero_serveur.txt | sed '/^$/d' | cut -c 4- | cut -d , -f 1 | sed '$d' > $dossier_config/list_players.txt
+        players=`wc -l < $dossier_config/list_players.txt`
+        players_serveurs+=("$players")
+      else
+        players_serveurs+=("0")
+      fi
+    else
+      players_serveurs+=("0")
+    fi
+  else
+    map_serveurs+=("0")
+    serveur_name="Serveur non configuré"
+    sessionname_serveurs+=("$serveur_name")
+    port_serveurs+=("0")
+    rconport_serveurs+=("0")
+    players_serveurs+=("0")
+  fi
+  players_total_serveur=$(expr $players_total_serveur + ${players_serveurs[$numero_serveur]})
+  numero_serveur=$(expr $numero_serveur + 1) 
+done
+printf "$mon_printf" && printf "\r"
+if [[ "$players_total_serveur" != "0" ]]; then
+  if [[ "$force_update" == "oui" ]]; then
+    eval 'echo -e "[\e[41m\u2713 \e[0m] Nombre de joueurs connecté: $players_total_serveur (paramètre --force-update)"' $mon_log_perso
+  else
+    eval 'echo -e "[\e[41m\u2717 \e[0m] Nombre de joueurs connecté: $players_total_serveur"' $mon_log_perso
+  fi
+else
+  eval 'echo -e "[\e[42m\u2713 \e[0m] Aucun joueur connecté"' $mon_log_perso
+fi
+nombre_serveur=`echo ${#map_serveurs[@]}`
 
 url_steamdb="https://steamdb.info/app/376030/depots"
 wget -q --timeout=2 --waitretry=0 --tries=2  "$url_steamdb" -O "$dossier_config/steamdb.log" &
@@ -602,32 +664,67 @@ printf "$mon_printf" && printf "\r"
 availablebuild=`cat "$dossier_config/steamdb.log" | grep "href=\"/patchnotes/" | grep "rel=\"nofollow\">" | sed -n 1p | sed 's|.*/patchnotes/||' | sed -e 's|/".*||'`
 rm $dossier_config/steamdb.log
 
+rm -rf ~/.steam/appcache
+#steamcmd +login anonymous +app_info_update 1 +app_info_print 376030 +quit > $dossier_config/availablebuild.log &
+#pid=$!
+#spin='-\|/'
+#i=0
+#while kill -0 $pid 2>/dev/null
+#do
+#  i=$(( (i+1) %4 ))
+#  printf "\r[  ] Vérification de la version du serveur ... ${spin:$i:1}"
+#  sleep .1
+#done
+#printf "$mon_printf" && printf "\r"
+#availablebuild=`cat $dossier_config/availablebuild.log | grep -EA 1000 "^\s+\"branches\"$" | grep -EA 5 "^\s+\"public\"$" | grep -m 1 -EB 10 "^\s+}$" | grep -E "^\s+\"buildid\"\s+" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d' ' -f3`
+#rm $dossier_config/availablebuild.log
+
 if [ -n "$nom_serveur" ] && [ -n "$chemin_serveur" ]; then
   currentbuild=`grep buildid "$chemin_serveur/serverfiles/steamapps/appmanifest_376030.acf" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d\  -f3`
   
   compare=`testvercomp $currentbuild $availablebuild '<' | grep Pass`
   if [[ "$compare" != "" ]] ; then
-    restart_necessaire="oui"
     eval 'echo -e "[\e[42m\u2713 \e[0m] Une mise à jour du serveur $nom_serveur est disponible:"' $mon_log_perso
     eval 'echo -e " ... Build actuelle: $RED$currentbuild$NORMAL"' $mon_log_perso
     eval 'echo -e " ... Build disponible: $GREEN$availablebuild$NORMAL"' $mon_log_perso
-    bash $script_discord ":construction: Une mise à jour du server $nom_serveur est disponible, un reboot sera effectué sous peu :construction:"
-    annonce_discord="oui"
-    if [[ "$push_maj_serveur" == "oui" ]]; then
-      message_maj=`echo -e "Une mise à jour du serveur $nom_serveur est disponible.\n<b>Version actuelle:</b> "$currentbuild"\n<b>Version disponible:</b> "$availablebuild`
-      for user in {1..10}; do
+    if [[ "$players_total_serveur" != "0" && "$force_update" == "oui" ]] || [[ "$players_total_serveur" == "0" ]]; then
+      restart_necessaire="oui"
+      bash $script_discord ":construction: Une mise à jour du server $nom_serveur est disponible, un reboot sera effectué sous peu :construction:"
+      annonce_discord="oui"
+      if [[ "$push_maj_serveur" == "oui" ]]; then
+        message_maj=`echo -e "Une mise à jour du serveur $nom_serveur est disponible.\n<b>Version actuelle:</b> "$currentbuild"\n<b>Version disponible:</b> "$availablebuild`
+        for user in {1..10}; do
         destinataire=`eval echo "\\$destinataire_"$user`
-        if [ -n "$destinataire" ]; then
-          curl -s \
-            --form-string "token=$token_app" \
-            --form-string "user=$destinataire" \
-            --form-string "title=Mise à jour disponible" \
-            --form-string "message=$message_maj" \
-            --form-string "html=1" \
-            --form-string "priority=-1" \
-            https://api.pushover.net/1/messages.json > /dev/null
-        fi
-      done
+          if [ -n "$destinataire" ]; then
+            curl -s \
+              --form-string "token=$token_app" \
+              --form-string "user=$destinataire" \
+              --form-string "title=Mise à jour disponible" \
+              --form-string "message=$message_maj" \
+              --form-string "html=1" \
+              --form-string "priority=-1" \
+              https://api.pushover.net/1/messages.json > /dev/null
+          fi
+        done
+      fi
+    else
+      eval 'echo -e " ... La mise à jour ne sera pas instalée: paramètre \"--force-update\" manquant"' $mon_log_perso
+      if [[ "$push_maj_serveur" == "oui" ]]; then
+        message_maj=`echo -e "Une mise à jour du serveur $nom_serveur est disponible.\n<b>Version actuelle:</b> "$currentbuild"\n<b>Version disponible:</b> "$availablebuild"\n<b>MAIS NE SERA PAS INSTALLÉE...</b>\n<b>Nombre de joueurs connectés:</b> "$players_total_serveur`
+        for user in {1..10}; do
+        destinataire=`eval echo "\\$destinataire_"$user`
+          if [ -n "$destinataire" ]; then
+            curl -s \
+              --form-string "token=$token_app" \
+              --form-string "user=$destinataire" \
+              --form-string "title=Mise à jour disponible" \
+              --form-string "message=$message_maj" \
+              --form-string "html=1" \
+              --form-string "priority=-1" \
+              https://api.pushover.net/1/messages.json > /dev/null
+          fi
+        done
+      fi
     fi
   else
     eval 'echo -e "[\e[42m\u2713 \e[0m] Serveur $nom_serveur à jour:"' $mon_log_perso
@@ -638,13 +735,13 @@ fi
 eval 'echo -e "\e[44m\u2263\u2263  \e[0m \e[44m \e[1mTÉLÉCHARGEMENTS DES MODS  \e[0m \e[44m  \e[0m \e[44m \e[0m \e[34m\u2759\e[0m"' $mon_log_perso
 
 if [[ "$mod_branch" == "Linux" ]]; then
-  eval 'echo -e "[\e[43m\u2713 \e[0m] Les mods seront téléchargés en version Linux. Il est conseillé de les prendre en version Windows, la version Linux peut causer des plantages du server."' $mon_log_perso
+  eval 'echo -e "[\e[43m\u2713 \e[0m] Les mods seront téléchargés en version Linux. Il est conseillé de les prendre en version Windows, la version Linux peut causer des plantages du server"' $mon_log_perso
 else
   if [[ "$mod_branch" == "Windows" ]]; then
-    eval 'echo -e "[\e[42m\u2713 \e[0m] Les mods seront téléchargés en version Windows."' $mon_log_perso
+    eval 'echo -e "[\e[42m\u2713 \e[0m] Les mods seront téléchargés en version Windows"' $mon_log_perso
   else
-    eval 'echo -e "[\e[41m\u2717 \e[0m] Le paramètre mod_branch est à configurer. Il est conseillé de les prendre en version Windows, la version Linux peut causer des plantages du server."' $mon_log_perso
-    eval 'echo -e "[\e[42m\u2713 \e[0m] Les mods seront téléchargés en version Windows."' $mon_log_perso
+    eval 'echo -e "[\e[41m\u2717 \e[0m] Le paramètre mod_branch est à configurer. Il est conseillé de les prendre en version Windows, la version Linux peut causer des plantages du server"' $mon_log_perso
+    eval 'echo -e "[\e[42m\u2713 \e[0m] Les mods seront téléchargés en version Windows"' $mon_log_perso
     mod_branch="Windows"
   fi
 fi
@@ -676,217 +773,218 @@ for modId in ${activemods//,/ }; do
     echo "Mod_"$modId"=\""$modName"\"" >> /root/.config/updatemods/modinfo.db
   fi
   
-  info_version_mod_disponible=`curl -s "https://steamcommunity.com/sharedfiles/filedetails/?id=$modId" | sed -n 's|^.*<div class="detailsStatRight">\([^<]*\)</div>.*|\1|p'`
-  info_version_mod_disponible=`echo $info_version_mod_disponible | cut -d" " -f8-`
+  info_version_mod_disponible=`curl -s "https://steamcommunity.com/sharedfiles/filedetails/?id=$modId" | sed -n 's|^.*<div class="detailsStatRight">\([^<]*\)</div>.*|\1|p' | sed -n 3p`
   info_version_mod_local=""
   if [[ -f "$modExtractDir/.updatemods.info" ]] && [[ "$force_dl" == "non" ]] ;then 
     info_version_mod_local=`cat "$modExtractDir/.updatemods.info"`
   fi
   if [ "$info_version_mod_disponible" != "$info_version_mod_local" ]; then
-    if [[ "$force_dl" == "non" ]]; then
-      eval 'echo -e "[\e[41m\u2717 \e[0m] Mise à jour du mod $modName ($modId) nécessaire"' $mon_log_perso
-    else
-      eval 'echo -e "[\e[41m\u2717 \e[0m] Mise à jour du mod $modName ($modId) demandé"' $mon_log_perso
-    fi
-    steamcmd +login anonymous +workshop_download_item 346110 $modId +quit > steamdl.log &
-    pid=$!
-    spin='-\|/'
-    i=0
-    while kill -0 $pid 2>/dev/null
-    do
-      i=$(( (i+1) %4 ))
-      printf "\r[  ] Téléchargement du mod $modName ($modId) ... ${spin:$i:1}"
-      sleep .1
-    done
-    printf "$mon_printf" && printf "\r"
-    echo -e "\nEnd of downloading." >> steamdl.log
-    modSrcDir=""
-    while IFS= read -r -d $'\n'; do
-      modDir=`echo "$REPLY" | sed -n 's@^Success. Downloaded item '$modId' to "\([^"]*\)" .*@\1@p'`
-      if [[ "$modDir" != "" ]]; then
-      modSrcDir=$modDir
+    if [[ "$players_total_serveur" != "0" && "$force_update" == "oui" ]] || [[ "$players_total_serveur" == "0" ]]; then
+      if [[ "$force_dl" == "non" ]]; then
+        eval 'echo -e "[\e[41m\u2717 \e[0m] Mise à jour du mod $modName ($modId) nécessaire"' $mon_log_perso
+      else
+        eval 'echo -e "[\e[41m\u2717 \e[0m] Mise à jour du mod $modName ($modId) demandé"' $mon_log_perso
       fi
-    done <steamdl.log
-    rm steamdl.log
-    
-    if [[ "$modSrcDir" != "" ]]; then
-      message="[\e[42m\u2713 \e[0m] Mod $modName ($modId) téléchargé"
-      if [[ "$debug" == "oui" ]]; then
-        message=$message": "$modSrcDir
-      fi
-      eval 'echo -e $message' $mon_log_perso
+      steamcmd +login anonymous +workshop_download_item 346110 $modId +quit > steamdl.log &
+      pid=$!
+      spin='-\|/'
+      i=0
+      while kill -0 $pid 2>/dev/null
+      do
+        i=$(( (i+1) %4 ))
+        printf "\r[  ] Téléchargement du mod $modName ($modId) ... ${spin:$i:1}"
+        sleep .1
+      done
+      printf "$mon_printf" && printf "\r"
+      echo -e "\nEnd of downloading." >> steamdl.log
+      modSrcDir=""
+      while IFS= read -r -d $'\n'; do
+        modDir=`echo "$REPLY" | sed -n 's@^Success. Downloaded item '$modId' to "\([^"]*\)" .*@\1@p'`
+        if [[ "$modDir" != "" ]]; then
+          modSrcDir=$modDir
+        fi
+      done <steamdl.log
+      rm steamdl.log
       
-      if [ -f "$modSrcDir/mod.info" ]; then
-        message="\r[  ] Extraction des fichiers"
+      if [[ "$modSrcDir" != "" ]]; then
+        message="[\e[42m\u2713 \e[0m] Mod $modName ($modId) téléchargé"
         if [[ "$debug" == "oui" ]]; then
-          message=$message" vers "$modExtractDir
+          message=$message": "$modSrcDir
         fi
-        printf $message
-        
-        if [ -f "$modSrcDir/${mod_branch}NoEditor/mod.info" ]; then
-          modSrcDir="$modSrcDir/${mod_branch}NoEditor"
-        fi
-        
-        find "$modSrcDir" -type d -printf "$modExtractDir/%P\0" | xargs -0 -r mkdir -p
-        
-        find "$modExtractDir" -type f ! -name '.*' -printf "%P\n" | while read f; do
-          if [ \( ! -f "$modSrcDir/$f" \) -a \( ! -f "$modSrcDir/${f}.z" \) ]; then
-            rm "$modExtractDir/$f"
-          fi
-        done
-        
-        find "$modExtractDir" -depth -type d -printf "%P\n" | while read d; do
-          if [ ! -d "$modSrcDir/$d" ]; then
-            rmdir "$modExtractDir/$d"
-          fi
-        done
-        
-        find "$modSrcDir" -type f ! \( -name '*.z' -or -name '*.z.uncompressed_size' \) -printf "%P\n" | while read f; do
-          if [ \( ! -f "$modExtractDir/$f" \) -o "$modSrcDir/$f" -nt "$modExtractDir/$f" ]; then
-            #printf "%10d  %s  " "`stat -c '%s' "$modSrcDir/$f"`" "$f"
-            cp "$modSrcDir/$f" "$modExtractDir/$f"
-            #echo -ne "\r\\033[K"
-          fi
-        done
-        
-        find "$modSrcDir" -type f -name '*.z' -printf "%P\n" | while read f; do
-          if [ \( ! -f "$modExtractDir/${f%.z}" \) -o "$modSrcDir/$f" -nt "$modExtractDir/${f%.z}" ]; then
-            #printf "%10d  %s  " "`stat -c '%s' "$modSrcDir/$f"`" "${f%.z}"
-            perl -M'Compress::Raw::Zlib' -e '
-              my $sig;
-              read(STDIN, $sig, 8) or die "Unable to read compressed file: $!";
-              if ($sig != "\xC1\x83\x2A\x9E\x00\x00\x00\x00"){
-                die "Bad file magic";
-              }
-              my $data;
-              read(STDIN, $data, 24) or die "Unable to read compressed file: $!";
-              my ($chunksizelo, $chunksizehi,
-                $comprtotlo,  $comprtothi,
-                $uncomtotlo,  $uncomtothi)  = unpack("(LLLLLL)<", $data);
-              my @chunks = ();
-              my $comprused = 0;
-              while ($comprused < $comprtotlo) {
-                read(STDIN, $data, 16) or die "Unable to read compressed file: $!";
-                my ($comprsizelo, $comprsizehi,
-                  $uncomsizelo, $uncomsizehi) = unpack("(LLLL)<", $data);
-                push @chunks, $comprsizelo;
-                $comprused += $comprsizelo;
-              }
-              foreach my $comprsize (@chunks) {
-                read(STDIN, $data, $comprsize) or die "File read failed: $!";
-                my ($inflate, $status) = new Compress::Raw::Zlib::Inflate();
-                my $output;
-                $status = $inflate->inflate($data, $output, 1);
-                if ($status != Z_STREAM_END) {
-                  die "Bad compressed stream; status: " . ($status);
-                }
-                if (length($data) != 0) {
-                  die "Unconsumed data in input"
-                }
-                print $output;
-              }
-            ' <"$modSrcDir/$f" >"$modExtractDir/${f%.z}"
-            touch -c -r "$modSrcDir/$f" "$modExtractDir/${f%.z}"
-            #echo -ne "\r\\033[K"
-          fi
-        done
-        
-        if [ -f "${modExtractDir}/.mod" ]; then
-          rm "${modExtractDir}/.mod"
-        fi
-        
-        perl -e '
-          my $data;
-          { local $/; $data = <STDIN>; }
-          my $mapnamelen = unpack("@0 L<", $data);
-          my $mapname = substr($data, 4, $mapnamelen - 1);
-          my $nummaps = unpack("@" . ($mapnamelen + 4) . " L<", $data);
-          my $pos = $mapnamelen + 8;
-          my $modname = ($ARGV[1] || $mapname) . "\x00";
-          my $modnamelen = length($modname);
-          my $modpath = "../../../ShooterGame/Content/Mods/" . $ARGV[0] . "\x00";
-          my $modpathlen = length($modpath);
-          print pack("L< L< L< Z$modnamelen L< Z$modpathlen L<",
-            $ARGV[0], 0, $modnamelen, $modname, $modpathlen, $modpath,
-            $nummaps);
-          for (my $mapnum = 0; $mapnum < $nummaps; $mapnum++){
-            my $mapfilelen = unpack("@" . ($pos) . " L<", $data);
-            my $mapfile = substr($data, $mapnamelen + 12, $mapfilelen);
-            print pack("L< Z$mapfilelen", $mapfilelen, $mapfile);
-            $pos = $pos + 4 + $mapfilelen;
-          }
-          print "\x33\xFF\x22\xFF\x02\x00\x00\x00\x01";
-        ' $modId "$modName" <"$modExtractDir/mod.info" >"${modExtractDir}.mod"
-        
-        if [ -f "$modExtractDir/modmeta.info" ]; then
-          cat "$modExtractDir/modmeta.info" >>"${modExtractDir}.mod"
-        else
-          echo -ne '\x01\x00\x00\x00\x08\x00\x00\x00ModType\x00\x02\x00\x00\x001\x00' >>"${modExtractDir}.mod"
-        fi
-        
-        info_version_mod=`curl -s "https://steamcommunity.com/sharedfiles/filedetails/?id=$modId" | sed -n 's|^.*<div class="detailsStatRight">\([^<]*\)</div>.*|\1|p'`
-        info_version_mod=`echo $info_version_mod | cut -d" " -f8-`
-        echo $info_version_mod > "$modExtractDir/.updatemods.info"
-        
-        message="\r[\e[42m\u2713 \e[0m] Extraction des fichiers"
-        if [[ "$debug" == "oui" ]]; then
-          message=$message" vers "$modExtractDir
-        fi
-        restart_necessaire="oui"
         eval 'echo -e $message' $mon_log_perso
         
-        ## Copie vers le dossier MOD d'ARK
-        if [[ "$modExtractDir" != "$modDestDir" ]]; then
-          message="\r[  ] Copie des fichiers"
+        if [ -f "$modSrcDir/mod.info" ]; then
+          message="\r[  ] Extraction des fichiers"
           if [[ "$debug" == "oui" ]]; then
             message=$message" vers "$modExtractDir
           fi
           printf $message
-          if [ ! -d "${modDestDir}" ]; then
-            mkdir -p "${modDestDir}"
+          
+          if [ -f "$modSrcDir/${mod_branch}NoEditor/mod.info" ]; then
+            modSrcDir="$modSrcDir/${mod_branch}NoEditor"
           fi
-          cp -au --remove-destination "${modExtractDir}/." "${modDestDir}"
-          find "${modDestDir}" -type f ! -name '.*' -printf "%P\n" | while read f; do
-            if [ ! -f "${modExtractDir}/${f}" ]; then
-              rm "${modDestDir}/${f}"
+          
+          find "$modSrcDir" -type d -printf "$modExtractDir/%P\0" | xargs -0 -r mkdir -p
+          
+          find "$modExtractDir" -type f ! -name '.*' -printf "%P\n" | while read f; do
+            if [ \( ! -f "$modSrcDir/$f" \) -a \( ! -f "$modSrcDir/${f}.z" \) ]; then
+              rm "$modExtractDir/$f"
             fi
           done
+          
           find "$modExtractDir" -depth -type d -printf "%P\n" | while read d; do
             if [ ! -d "$modSrcDir/$d" ]; then
               rmdir "$modExtractDir/$d"
             fi
           done
-          cp -u "${modExtractDir}.mod" "${modDestDir}.mod"
-          message="\r[\e[42m\u2713 \e[0m] Copie des fichiers"
-          if [[ "$debug" == "oui" ]]; then
-            message=$message" vers "$modDestDir
-          fi
-          eval 'echo -e $message' $mon_log_perso
-        fi
-        if [[ "$annonce_discord" != "oui" ]]; then
-          bash $script_discord ":construction: Une mise à jour d'un mod est disponible, un reboot sera effectué sous peu :construction:"
-          annonce_discord="oui"
-        fi
-        if [[ "$push_maj_mod" == "oui" ]]; then
-          message_maj=`echo -e "Une mise à jour du mod "$modName" ("$modId") est instalée.\nLe redémarrage du serveur s'effectuera après la procédure de mise à jour."`
-          for user in {1..10}; do
-            destinataire=`eval echo "\\$destinataire_"$user`
-            if [ -n "$destinataire" ]; then
-              curl -s \
-                --form-string "token=$token_app" \
-                --form-string "user=$destinataire" \
-                --form-string "title=Mise à jour mod" \
-                --form-string "message=$message_maj" \
-                --form-string "html=1" \
-                --form-string "priority=-1" \
-                https://api.pushover.net/1/messages.json > /dev/null
+          
+          find "$modSrcDir" -type f ! \( -name '*.z' -or -name '*.z.uncompressed_size' \) -printf "%P\n" | while read f; do
+            if [ \( ! -f "$modExtractDir/$f" \) -o "$modSrcDir/$f" -nt "$modExtractDir/$f" ]; then
+              #printf "%10d  %s  " "`stat -c '%s' "$modSrcDir/$f"`" "$f"
+              cp "$modSrcDir/$f" "$modExtractDir/$f"
+              #echo -ne "\r\\033[K"
             fi
           done
+          
+          find "$modSrcDir" -type f -name '*.z' -printf "%P\n" | while read f; do
+            if [ \( ! -f "$modExtractDir/${f%.z}" \) -o "$modSrcDir/$f" -nt "$modExtractDir/${f%.z}" ]; then
+              #printf "%10d  %s  " "`stat -c '%s' "$modSrcDir/$f"`" "${f%.z}"
+              perl -M'Compress::Raw::Zlib' -e '
+                my $sig;
+                read(STDIN, $sig, 8) or die "Unable to read compressed file: $!";
+                if ($sig != "\xC1\x83\x2A\x9E\x00\x00\x00\x00"){
+                  die "Bad file magic";
+                }
+                my $data;
+                read(STDIN, $data, 24) or die "Unable to read compressed file: $!";
+                my ($chunksizelo, $chunksizehi,
+                  $comprtotlo,  $comprtothi,
+                  $uncomtotlo,  $uncomtothi)  = unpack("(LLLLLL)<", $data);
+                my @chunks = ();
+                my $comprused = 0;
+                while ($comprused < $comprtotlo) {
+                  read(STDIN, $data, 16) or die "Unable to read compressed file: $!";
+                  my ($comprsizelo, $comprsizehi,
+                    $uncomsizelo, $uncomsizehi) = unpack("(LLLL)<", $data);
+                  push @chunks, $comprsizelo;
+                  $comprused += $comprsizelo;
+                }
+                foreach my $comprsize (@chunks) {
+                  read(STDIN, $data, $comprsize) or die "File read failed: $!";
+                  my ($inflate, $status) = new Compress::Raw::Zlib::Inflate();
+                  my $output;
+                  $status = $inflate->inflate($data, $output, 1);
+                  if ($status != Z_STREAM_END) {
+                    die "Bad compressed stream; status: " . ($status);
+                  }
+                  if (length($data) != 0) {
+                    die "Unconsumed data in input"
+                  }
+                  print $output;
+                }
+              ' <"$modSrcDir/$f" >"$modExtractDir/${f%.z}"
+              touch -c -r "$modSrcDir/$f" "$modExtractDir/${f%.z}"
+              #echo -ne "\r\\033[K"
+            fi
+          done
+          
+          if [ -f "${modExtractDir}/.mod" ]; then
+            rm "${modExtractDir}/.mod"
+          fi
+          
+          perl -e '
+            my $data;
+            { local $/; $data = <STDIN>; }
+            my $mapnamelen = unpack("@0 L<", $data);
+            my $mapname = substr($data, 4, $mapnamelen - 1);
+            my $nummaps = unpack("@" . ($mapnamelen + 4) . " L<", $data);
+            my $pos = $mapnamelen + 8;
+            my $modname = ($ARGV[1] || $mapname) . "\x00";
+            my $modnamelen = length($modname);
+            my $modpath = "../../../ShooterGame/Content/Mods/" . $ARGV[0] . "\x00";
+            my $modpathlen = length($modpath);
+            print pack("L< L< L< Z$modnamelen L< Z$modpathlen L<",
+              $ARGV[0], 0, $modnamelen, $modname, $modpathlen, $modpath,
+              $nummaps);
+            for (my $mapnum = 0; $mapnum < $nummaps; $mapnum++){
+              my $mapfilelen = unpack("@" . ($pos) . " L<", $data);
+              my $mapfile = substr($data, $mapnamelen + 12, $mapfilelen);
+              print pack("L< Z$mapfilelen", $mapfilelen, $mapfile);
+              $pos = $pos + 4 + $mapfilelen;
+            }
+            print "\x33\xFF\x22\xFF\x02\x00\x00\x00\x01";
+          ' $modId "$modName" <"$modExtractDir/mod.info" >"${modExtractDir}.mod"
+          
+          if [ -f "$modExtractDir/modmeta.info" ]; then
+            cat "$modExtractDir/modmeta.info" >>"${modExtractDir}.mod"
+          else
+            echo -ne '\x01\x00\x00\x00\x08\x00\x00\x00ModType\x00\x02\x00\x00\x001\x00' >>"${modExtractDir}.mod"
+          fi
+          
+          echo $info_version_mod_disponible > "$modExtractDir/.updatemods.info"
+          
+          message="\r[\e[42m\u2713 \e[0m] Extraction des fichiers"
+          if [[ "$debug" == "oui" ]]; then
+            message=$message" vers "$modExtractDir
+          fi
+          restart_necessaire="oui"
+          eval 'echo -e $message' $mon_log_perso
+          
+          ## Copie vers le dossier MOD d'ARK
+          if [[ "$modExtractDir" != "$modDestDir" ]]; then
+            message="\r[  ] Copie des fichiers"
+            if [[ "$debug" == "oui" ]]; then
+              message=$message" vers "$modExtractDir
+            fi
+            printf $message
+            if [ ! -d "${modDestDir}" ]; then
+              mkdir -p "${modDestDir}"
+            fi
+            cp -au --remove-destination "${modExtractDir}/." "${modDestDir}"
+            find "${modDestDir}" -type f ! -name '.*' -printf "%P\n" | while read f; do
+              if [ ! -f "${modExtractDir}/${f}" ]; then
+                rm "${modDestDir}/${f}"
+              fi
+            done
+            find "$modExtractDir" -depth -type d -printf "%P\n" | while read d; do
+              if [ ! -d "$modSrcDir/$d" ]; then
+                rmdir "$modExtractDir/$d"
+              fi
+            done
+            cp -u "${modExtractDir}.mod" "${modDestDir}.mod"
+            message="\r[\e[42m\u2713 \e[0m] Copie des fichiers"
+            if [[ "$debug" == "oui" ]]; then
+              message=$message" vers "$modDestDir
+            fi
+            eval 'echo -e $message' $mon_log_perso
+          fi
+          if [[ "$annonce_discord" != "oui" ]]; then
+            bash $script_discord ":construction: Une mise à jour d'un mod est disponible, un reboot sera effectué sous peu :construction:"
+            annonce_discord="oui"
+          fi
+          if [[ "$push_maj_mod" == "oui" ]]; then
+            message_maj=`echo -e "Une mise à jour du mod "$modName" ("$modId") est instalée.\nLe redémarrage du serveur s'effectuera après la procédure de mise à jour."`
+            for user in {1..10}; do
+              destinataire=`eval echo "\\$destinataire_"$user`
+              if [ -n "$destinataire" ]; then
+                curl -s \
+                  --form-string "token=$token_app" \
+                  --form-string "user=$destinataire" \
+                  --form-string "title=Mise à jour mod" \
+                  --form-string "message=$message_maj" \
+                  --form-string "html=1" \
+                  --form-string "priority=-1" \
+                  https://api.pushover.net/1/messages.json > /dev/null
+              fi
+            done
+          fi
         fi
+        echo " ---"
+      else
+        eval 'echo -e "[\e[41m\u2717 \e[0m] Erreur lors du téléchargement du mod $modName ($modId)."' $mon_log_perso
       fi
-    echo " ---"
     else
-      eval 'echo -e "[\e[41m\u2717 \e[0m] Erreur lors du téléchargement du mod $modName ($modId)."' $mon_log_perso
+      eval 'echo -e "[\e[41m\u2717 \e[0m] La mise à jour du mod $modName ($modId) ne sera pas installée."' $mon_log_perso
     fi
   else
     eval 'echo -e "[\e[42m\u2713 \e[0m] Mod $modName ($modId) à jour"' $mon_log_perso
@@ -896,22 +994,6 @@ done
 eval 'echo -e "\e[44m\u2263\u2263  \e[0m \e[44m \e[1mREDÉMARRAGE DU SERVEUR  \e[0m \e[44m  \e[0m \e[44m \e[0m \e[34m\u2759\e[0m"' $mon_log_perso
 if [[ "$restart_necessaire" == "oui" ]]; then
   restart="non"
-  #### Recupération des infos serveur ARK
-  sh_serveurs=()
-  map_serveurs=()
-  sessionname_serveurs=()
-  port_serveurs=()
-  for sh_actuel in $liste_serveurs ; do
-    sh_serveurs+=("$sh_actuel")
-    if [[ -f "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" ]]; then
-      map_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "^defaultmap=" | sed -e "s/defaultmap=\"//g" | sed -e "s/\"//g"`)
-      serveur_name=`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "SessionName=" | sed 's/.*SessionName=//g' | sed 's/?.*//g'`
-      sessionname_serveurs+=("$serveur_name")
-      port_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "^port=" | sed -e "s/port=\"//g" | sed -e "s/\"//g"`)
-    fi
-  done
-  nombre_serveur=`echo ${#map_serveurs[@]}`
-  
   ### Création du script de reboot du serveur
   chmod 777 -R "$chemin_serveur"
   chown $user_arkserver:$user_arkserver -R "$chemin_serveur"
@@ -962,7 +1044,7 @@ EOF
   if [[ "$restart" != "oui" ]]; then
     eval 'echo -e "\r[\e[42m\u2713 \e[0m] Pas de nécessité de redémarrer le serveur"' $mon_log_perso
     if [[ "$push_maj_serveur" == "oui" ]]; then
-      message_reboot=`echo -e "Pas de nécessité de redémarrer le serveur : aucun serveur démarré."`
+      message_reboot=`echo -e "Pas de nécessité de redémarrer le serveur: aucun serveur démarré."`
       for user in {1..10}; do
         destinataire=`eval echo "\\$destinataire_"$user`
         if [ -n "$destinataire" ]; then
