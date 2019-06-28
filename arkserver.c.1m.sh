@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-version="0.0.0.9"
+version="0.0.0.10"
 
 
 #### Mes paramètres
@@ -466,13 +466,14 @@ process_arkserver=`ps aux | grep "./ShooterGameServer ${map_serveurs[$numero_ser
 done
 
 ## TS
-echo "---"
 if [[ "$process_teamspeak" != "" ]]; then
+echo "---"
   printf "\e[1m%-21s :\e[0m %-3s | image='$ARKSERVER_TS' ansi=true font='Ubuntu Mono' trim=false imageWidth=18 \n" "Serveur TS" ":heavy_check_mark:"
   printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":arrow_forward:" "Numero du process" "$process_teamspeak"
   printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":arrow_forward:" "Utilisation CPU" "$ts_cpu"
   printf "%-2s %-3s \e[1m%-18s :\e[0m %-22s | ansi=true font='Ubuntu Mono' trim=false \n" "--" ":arrow_forward:" "Utilisation MEM" "$ts_mem"
 else
+echo "---"
   printf "\e[1m%-21s :\e[0m %-3s | image='$ARKSERVER_TS' ansi=true font='Ubuntu Mono' trim=false imageWidth=18 \n" "Serveur TS" ":x:"
 fi
 if [[ "$process_hackts" != "" ]]; then
