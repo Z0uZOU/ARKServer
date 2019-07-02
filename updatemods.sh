@@ -6,7 +6,7 @@
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && shc -f updatemods.sh -o updatemods.bin && chmod +x updatemods.bin && rm -f *.x.c && rm -f updatemods.sh
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && chmod +x updatemods.sh
 ## Micro-config
-version="Version: 0.0.0.66" #base du système de mise à jour
+version="Version: 0.0.0.67" #base du système de mise à jour
 description="Téléchargeur de Mods pour ARK: Survival Evolved" #description pour le menu
 script_github="https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh" #emplacement du script original
 changelog_github="https://pastebin.com/raw/vJpabVtT" #emplacement du changelog de ce script
@@ -647,6 +647,7 @@ if [[ "$players_total_serveur" != "0" ]]; then
 else
   eval 'echo -e "[\e[42m\u2713 \e[0m] Aucun joueur connecté"' $mon_log_perso
 fi
+rm -f rcon_* 2>/dev/null
 nombre_serveur=`echo ${#map_serveurs[@]}`
 
 url_steamdb="https://steamdb.info/app/376030/depots"
