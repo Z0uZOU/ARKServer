@@ -6,7 +6,7 @@
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && shc -f updatemods.sh -o updatemods.bin && chmod +x updatemods.bin && rm -f *.x.c && rm -f updatemods.sh
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && chmod +x updatemods.sh
 ## Micro-config
-version="Version: 0.0.0.68" #base du système de mise à jour
+version="Version: 0.0.0.69" #base du système de mise à jour
 description="Téléchargeur de Mods pour ARK: Survival Evolved" #description pour le menu
 script_github="https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh" #emplacement du script original
 changelog_github="https://pastebin.com/raw/vJpabVtT" #emplacement du changelog de ce script
@@ -423,6 +423,7 @@ destinataire_2=""
 titre_push=""
 push_maj_mod="oui"
 push_maj_serveur="oui"
+webhook_discord=""
  
 ####################################
 ## Fin de configuration
@@ -552,15 +553,53 @@ cd /opt/scripts
  
 #### vérification de la présence de 'rcon'
 if [[ ! -f "$dossier_config/rcon" ]] ; then
-  printf "\r[  ] Installation de la dépendance rcon ..."
-  wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/prerequisites/rcon.c -O $dossier_config/rcon.c > /dev/null
-  gcc $dossier_config/rcon.c -o $dossier_config/rcon > /dev/null
-  chmod ugo+rx $dossier_config/rcon > /dev/null
+  wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/prerequisites/rcon.c -O $dossier_config/rcon.c && gcc $dossier_config/rcon.c -o $dossier_config/rcon && chmod ugo+rx $dossier_config/rcon &
+  pid=$!
+  spin='-\|/'
+  i=0
+  while kill -0 $pid 2>/dev/null
+  do
+    i=$(( (i+1) %4 ))
+    printf "\r[  ] Installation de la dépendance rcon ... ${spin:$i:1}"
+    sleep .1
+  done
   rm $dossier_config/rcon.c > /dev/null
   printf "$mon_printf" && printf "\r"
   eval 'echo -e "[\e[42m\u2713 \e[0m] La dépendance: rcon est installée"' $mon_log_perso
 else
   eval 'echo -e "[\e[42m\u2713 \e[0m] La dépendance: rcon est installée"' $mon_log_perso
+fi
+ 
+#### vérification de la présence de 'discord.sh'
+emplacement_script_discord="/opt/scripts/discord.sh"
+if [[ ! -f "$emplacement_script_discord" ]] ; then
+  wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/prerequisites/discord.sh -O $emplacement_script_discord && sed -i -e 's/\r//g' $emplacement_script_discord && chmod +x $emplacement_script_discord &
+  pid=$!
+  spin='-\|/'
+  i=0
+  while kill -0 $pid 2>/dev/null
+  do
+    i=$(( (i+1) %4 ))
+    printf "\r[  ] Installation de la dépendance discord.sh ... ${spin:$i:1}"
+    sleep .1
+  done
+  printf "$mon_printf" && printf "\r"
+  eval 'echo -e "[\e[42m\u2713 \e[0m] La dépendance: discord.sh est installée"' $mon_log_perso
+else
+  eval 'echo -e "[\e[42m\u2713 \e[0m] La dépendance: discord.sh est installée"' $mon_log_perso
+fi
+ 
+config_discord="oui"
+if [[ ! -f "/opt/scripts/.webhook" ]]; then
+  if [[ "$webhook_discord" != "" ]]; then
+    echo "$webhook_discord" > /opt/scripts/.webhook
+    eval 'echo -e "[\e[42m\u2713 \e[0m] Utilisation du script \"discord.sh\": le fichier \".webhook\" a été créé, les notifications sur Discord seront envoyées"' $mon_log_perso
+  else
+    eval 'echo -e "[\e[41m\u2717 \e[0m] Utilisation du script \"discord.sh\": le fichier \".webhook\" est absent, les notifications sur Discord ne seront pas envoyées"' $mon_log_perso
+    config_discord="non"
+  fi
+else
+  eval 'echo -e "[\e[42m\u2713 \e[0m] Utilisation du script \"discord.sh\": le fichier \".webhook\" est présent, les notifications sur Discord seront envoyées"' $mon_log_perso
 fi
 
 ### Déclaration des variables pour les couleurs des textes
@@ -690,8 +729,10 @@ if [ -n "$nom_serveur" ] && [ -n "$chemin_serveur" ]; then
     eval 'echo -e " ... Build disponible: $GREEN$availablebuild$NORMAL"' $mon_log_perso
     if [[ "$players_total_serveur" != "0" && "$force_update" == "oui" ]] || [[ "$players_total_serveur" == "0" ]]; then
       restart_necessaire="oui"
-      bash $script_discord ":construction: Une mise à jour du server $nom_serveur est disponible, un reboot sera effectué sous peu :construction:"
-      annonce_discord="oui"
+      if [[ "$config_discord" == "oui" ]]; then
+        bash $script_discord ":construction: Une mise à jour du server $nom_serveur est disponible, un reboot sera effectué sous peu :construction:"
+        annonce_discord="oui"
+      fi
       if [[ "$push_maj_serveur" == "oui" ]]; then
         message_maj=`echo -e "Une mise à jour du serveur $nom_serveur est disponible.\n<b>Version actuelle:</b> "$currentbuild"\n<b>Version disponible:</b> "$availablebuild`
         for user in {1..10}; do
@@ -959,9 +1000,11 @@ for modId in ${activemods//,/ }; do
             fi
             eval 'echo -e $message' $mon_log_perso
           fi
-          if [[ "$annonce_discord" != "oui" ]]; then
-            bash $script_discord ":construction: Une mise à jour d'un mod est disponible, un reboot sera effectué sous peu :construction:"
-            annonce_discord="oui"
+          if [[ "$config_discord" == "oui" ]]; then
+            if [[ "$annonce_discord" != "oui" ]]; then
+              bash $script_discord ":construction: Une mise à jour d'un mod est disponible, un reboot sera effectué sous peu :construction:"
+              annonce_discord="oui"
+            fi
           fi
           if [[ "$push_maj_mod" == "oui" ]]; then
             message_maj=`echo -e "Une mise à jour du mod "$modName" ("$modId") est instalée.\nLe redémarrage du serveur s'effectuera après la procédure de mise à jour."`
