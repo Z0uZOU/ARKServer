@@ -6,7 +6,7 @@
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && shc -f updatemods.sh -o updatemods.bin && chmod +x updatemods.bin && rm -f *.x.c && rm -f updatemods.sh
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && chmod +x updatemods.sh
 ## Micro-config
-version="Version: 0.0.0.67" #base du système de mise à jour
+version="Version: 0.0.0.68" #base du système de mise à jour
 description="Téléchargeur de Mods pour ARK: Survival Evolved" #description pour le menu
 script_github="https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh" #emplacement du script original
 changelog_github="https://pastebin.com/raw/vJpabVtT" #emplacement du changelog de ce script
@@ -703,7 +703,7 @@ if [ -n "$nom_serveur" ] && [ -n "$chemin_serveur" ]; then
               --form-string "title=Mise à jour disponible" \
               --form-string "message=$message_maj" \
               --form-string "html=1" \
-              --form-string "priority=-1" \
+              --form-string "priority=1" \
               https://api.pushover.net/1/messages.json > /dev/null
           fi
         done
@@ -721,7 +721,7 @@ if [ -n "$nom_serveur" ] && [ -n "$chemin_serveur" ]; then
               --form-string "title=Mise à jour disponible" \
               --form-string "message=$message_maj" \
               --form-string "html=1" \
-              --form-string "priority=-1" \
+              --form-string "priority=1" \
               https://api.pushover.net/1/messages.json > /dev/null
           fi
         done
@@ -980,9 +980,26 @@ for modId in ${activemods//,/ }; do
             done
           fi
         fi
-        echo " ---"
+        eval 'echo " ---"' $mon_log_perso
       else
         eval 'echo -e "[\e[41m\u2717 \e[0m] Erreur lors du téléchargement du mod $modName ($modId)."' $mon_log_perso
+        if [[ "$push_maj_mod" == "oui" ]]; then
+          message_maj=`echo -e "Erreur lors du téléchargement du mod "$modName" ("$modId")."`
+          for user in {1..10}; do
+            destinataire=`eval echo "\\$destinataire_"$user`
+            if [ -n "$destinataire" ]; then
+              curl -s \
+                --form-string "token=$token_app" \
+                --form-string "user=$destinataire" \
+                --form-string "title=Mise à jour mod" \
+                --form-string "message=$message_maj" \
+                --form-string "html=1" \
+                --form-string "priority=1" \
+                https://api.pushover.net/1/messages.json > /dev/null
+            fi
+          done
+        fi
+        eval 'echo " ---"' $mon_log_perso
       fi
     else
       eval 'echo -e "[\e[41m\u2717 \e[0m] La mise à jour du mod $modName ($modId) ne sera pas installée."' $mon_log_perso
@@ -1034,7 +1051,7 @@ EOF
               --form-string "title=Redémarrage du serveur" \
               --form-string "message=$message_reboot" \
               --form-string "html=1" \
-              --form-string "priority=-1" \
+              --form-string "priority=1" \
               https://api.pushover.net/1/messages.json > /dev/null
           fi
         done
