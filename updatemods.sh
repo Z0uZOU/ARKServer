@@ -6,7 +6,7 @@
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && shc -f updatemods.sh -o updatemods.bin && chmod +x updatemods.bin && rm -f *.x.c && rm -f updatemods.sh
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && chmod +x updatemods.sh
 ## Micro-config
-version="Version: 0.0.0.70" #base du système de mise à jour
+version="Version: 0.0.0.71" #base du système de mise à jour
 description="Téléchargeur de Mods pour ARK: Survival Evolved" #description pour le menu
 script_github="https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh" #emplacement du script original
 changelog_github="https://pastebin.com/raw/vJpabVtT" #emplacement du changelog de ce script
@@ -56,6 +56,7 @@ mon_script_updater=`echo $mon_script_base"-update.sh"`
 debug="non"
 force_dl="non"
 force_update="non"
+force_copy="non"
  
 #### Tests des arguments
 for parametre in $@; do
@@ -146,6 +147,9 @@ for parametre in $@; do
   fi
   if [[ "$parametre" == "--force-update" ]]; then
     force_update="oui"
+  fi
+  if [[ "$parametre" == "--force-copy" ]]; then
+    force_copy="oui"
   fi
   if [[ "$parametre" == "--help" ]]; then
     path_log=`echo "/root/.config/"$mon_script_base"/log/"$date_log`
@@ -827,26 +831,47 @@ for modId in ${activemods//,/ }; do
       else
         eval 'echo -e "[\e[41m\u2717 \e[0m] Mise à jour du mod $modName ($modId) demandé"' $mon_log_perso
       fi
-      steamcmd +login anonymous +workshop_download_item 346110 $modId +quit > steamdl.log &
-      pid=$!
-      spin='-\|/'
-      i=0
-      while kill -0 $pid 2>/dev/null
-      do
-        i=$(( (i+1) %4 ))
-        printf "\r[  ] Téléchargement du mod $modName ($modId) ... ${spin:$i:1}"
-        sleep .1
-      done
-      printf "$mon_printf" && printf "\r"
-      echo -e "\nEnd of downloading." >> steamdl.log
       modSrcDir=""
-      while IFS= read -r -d $'\n'; do
-        modDir=`echo "$REPLY" | sed -n 's@^Success. Downloaded item '$modId' to "\([^"]*\)" .*@\1@p'`
-        if [[ "$modDir" != "" ]]; then
-          modSrcDir=$modDir
-        fi
-      done <steamdl.log
-      rm steamdl.log
+      while [[ "$modSrcDir" == "" ]]; do  
+        steamcmd +login anonymous +workshop_download_item 346110 $modId +quit > steamdl.log &
+        pid=$!
+        spin='-\|/'
+        i=0
+        while kill -0 $pid 2>/dev/null
+        do
+          i=$(( (i+1) %4 ))
+          printf "\r[  ] Téléchargement du mod $modName ($modId) ... ${spin:$i:1}"
+          sleep .1
+        done
+        printf "$mon_printf" && printf "\r"
+        echo -e "\nEnd of downloading." >> steamdl.log
+#        while IFS= read -r -d $'\n'; do
+#          modDir=`echo "$REPLY" | sed -n 's@^Success. Downloaded item '$modId' to "\([^"]*\)" .*@\1@p'`
+          modDir=`cat steamdl.log | grep "Success. Downloaded item $modId to" | awk '{print $6}' | sed 's/"//g'`
+          if [[ "$modDir" != "" ]]; then
+            modSrcDir=$modDir
+          else
+            eval 'echo -e "[\e[41m\u2717 \e[0m] Erreur lors du téléchargement du mod $modName ($modId)."' $mon_log_perso
+            #if [[ "$push_maj_mod" == "oui" ]]; then
+            #  message_maj=`echo -e "Erreur lors du téléchargement du mod "$modName" ("$modId")."`
+            #  for user in {1..10}; do
+            #    destinataire=`eval echo "\\$destinataire_"$user`
+            #    if [ -n "$destinataire" ]; then
+            #      curl -s \
+            #        --form-string "token=$token_app" \
+            #        --form-string "user=$destinataire" \
+            #        --form-string "title=Mise à jour mod" \
+            #        --form-string "message=$message_maj" \
+            #        --form-string "html=1" \
+            #        --form-string "priority=1" \
+            #        https://api.pushover.net/1/messages.json > /dev/null
+            #    fi
+            #  done
+            #fi
+          fi
+#        done <steamdl.log
+        rm steamdl.log
+      done
       
       if [[ "$modSrcDir" != "" ]]; then
         message="[\e[42m\u2713 \e[0m] Mod $modName ($modId) téléchargé"
