@@ -6,7 +6,7 @@
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && shc -f updatemods.sh -o updatemods.bin && chmod +x updatemods.bin && rm -f *.x.c && rm -f updatemods.sh
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && chmod +x updatemods.sh
 ## Micro-config
-version="Version: 0.0.0.71" #base du système de mise à jour
+version="Version: 0.0.0.72" #base du système de mise à jour
 description="Téléchargeur de Mods pour ARK: Survival Evolved" #description pour le menu
 script_github="https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh" #emplacement du script original
 changelog_github="https://pastebin.com/raw/vJpabVtT" #emplacement du changelog de ce script
@@ -322,6 +322,7 @@ if [[ "$compare" != "" ]] ; then
   if [[ "$mon_script_fichier" =~ \.sh$ ]]; then
     echo "mv $mon_script_fichier_temp $mon_script_fichier" >> $mon_script_updater
     echo "chmod +x $mon_script_fichier" >> $mon_script_updater
+    echo "chmod 777 $mon_script_fichier" >> $mon_script_updater
     echo "bash $mon_script_fichier $1 $2" >> $mon_script_updater
   else
     echo "shc -f $mon_script_fichier_temp -o $mon_script_fichier" >> $mon_script_updater
@@ -329,6 +330,7 @@ if [[ "$compare" != "" ]] ; then
     compilateur=`echo $mon_script_fichier".x.c"`
     echo "rm -f *.x.c" >> $mon_script_updater
     echo "chmod +x $mon_script_fichier" >> $mon_script_updater
+    echo "chmod 777 $mon_script_fichier" >> $mon_script_updater
     echo "echo mise à jour mise en place" >> $mon_script_updater
     echo "./$mon_script_fichier $1 $2" >> $mon_script_updater
   fi
