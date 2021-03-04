@@ -6,7 +6,7 @@
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && shc -f updatemods.sh -o updatemods.bin && chmod +x updatemods.bin && rm -f *.x.c && rm -f updatemods.sh
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && chmod +x updatemods.sh
 ## Micro-config
-version="Version: 0.0.0.73" #base du système de mise à jour
+version="Version: 0.0.0.74" #base du système de mise à jour
 description="Téléchargeur de Mods pour ARK: Survival Evolved" #description pour le menu
 script_github="https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh" #emplacement du script original
 changelog_github="https://pastebin.com/raw/vJpabVtT" #emplacement du changelog de ce script
@@ -725,6 +725,7 @@ rm -rf ~/.steam/appcache
 #availablebuild=`cat $dossier_config/availablebuild.log | grep -EA 1000 "^\s+\"branches\"$" | grep -EA 5 "^\s+\"public\"$" | grep -m 1 -EB 10 "^\s+}$" | grep -E "^\s+\"buildid\"\s+" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d' ' -f3`
 #rm $dossier_config/availablebuild.log
 
+maj_serveur="non"
 if [ -n "$nom_serveur" ] && [ -n "$chemin_serveur" ]; then
   currentbuild=`grep buildid "$chemin_serveur/serverfiles/steamapps/appmanifest_376030.acf" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d\  -f3`
   
@@ -735,6 +736,7 @@ if [ -n "$nom_serveur" ] && [ -n "$chemin_serveur" ]; then
     eval 'echo -e " ... Build disponible: $GREEN$availablebuild$NORMAL"' $mon_log_perso
     if [[ "$players_total_serveur" != "0" && "$force_update" == "oui" ]] || [[ "$players_total_serveur" == "0" ]]; then
       restart_necessaire="oui"
+      maj_serveur="oui"
       if [[ "$config_discord" == "oui" ]]; then
         bash $script_discord ":construction: Une mise à jour du server $nom_serveur est disponible, un reboot sera effectué sous peu :construction:"
         annonce_discord="oui"
@@ -834,6 +836,7 @@ for modId in ${activemods//,/ }; do
         eval 'echo -e "[\e[41m\u2717 \e[0m] Mise à jour du mod $modName ($modId) demandé"' $mon_log_perso
       fi
       modSrcDir=""
+      let num=0
       while [[ "$modSrcDir" == "" ]]; do  
         steamcmd +login anonymous +workshop_download_item 346110 $modId +quit > steamdl.log &
         pid=$!
@@ -854,24 +857,30 @@ for modId in ${activemods//,/ }; do
             modSrcDir=$modDir
           else
             eval 'echo -e "[\e[41m\u2717 \e[0m] Erreur lors du téléchargement du mod $modName ($modId)."' $mon_log_perso
-            #if [[ "$push_maj_mod" == "oui" ]]; then
-            #  message_maj=`echo -e "Erreur lors du téléchargement du mod "$modName" ("$modId")."`
-            #  for user in {1..10}; do
-            #    destinataire=`eval echo "\\$destinataire_"$user`
-            #    if [ -n "$destinataire" ]; then
-            #      curl -s \
-            #        --form-string "token=$token_app" \
-            #        --form-string "user=$destinataire" \
-            #        --form-string "title=Mise à jour mod" \
-            #        --form-string "message=$message_maj" \
-            #        --form-string "html=1" \
-            #        --form-string "priority=1" \
-            #        https://api.pushover.net/1/messages.json > /dev/null
-            #    fi
-            #  done
-            #fi
+            let num=$num+1
+            if [[ "$num" == "10" ]]; then
+              if [[ "$push_maj_mod" == "oui" ]]; then
+                message_maj=`echo -e "Erreur lors du téléchargement du mod "$modName" ("$modId")."`
+                for user in {1..10}; do
+                  destinataire=`eval echo "\\$destinataire_"$user`
+                  if [ -n "$destinataire" ]; then
+                    curl -s \
+                      --form-string "token=$token_app" \
+                      --form-string "user=$destinataire" \
+                      --form-string "title=Mise à jour mod" \
+                      --form-string "message=$message_maj" \
+                      --form-string "html=1" \
+                      --form-string "priority=1" \
+                      https://api.pushover.net/1/messages.json > /dev/null
+                  fi
+                done
+              fi
+              break
+            fi
           fi
 #        done <steamdl.log
+        if [ ! -d "/opt/scripts/SteamDL/log" ]; then mkdir -p "/opt/scripts/SteamDL/log"; fi
+        cp steamdl.log /opt/scripts/SteamDL/log/$modId.log
         rm steamdl.log
       done
       
@@ -1130,6 +1139,29 @@ EOF
     numero_serveur=$(expr $numero_serveur + 1)
   done
   if [[ "$restart" != "oui" ]]; then
+    if [[ "$maj_serveur" == "oui" ]]; then
+      numero_serveur=0
+      echo "#!/bin/bash" > /opt/scripts/ark-restart.sh
+      echo "mon_printf=\"\\r                                                                                           \"" >> /opt/scripts/ark-restart.sh
+      echo "bash $script_discord \":construction: Mise à jour du serveur :construction:\"" >> /opt/scripts/ark-restart.sh
+      echo "bash \"$chemin_serveur/${sh_serveurs[$numero_serveur]}\" force-update > /opt/scripts/ark-restart.log &" >> /opt/scripts/ark-restart.sh
+      echo "pid=\$!" >> /opt/scripts/ark-restart.sh
+      echo "spin='-\|/'" >> /opt/scripts/ark-restart.sh
+      echo "i=0" >> /opt/scripts/ark-restart.sh
+      echo "while kill -0 \$pid 2>/dev/null" >> /opt/scripts/ark-restart.sh
+      echo "do" >> /opt/scripts/ark-restart.sh
+      echo "  i=\$(( (i+1) %4 ))" >> /opt/scripts/ark-restart.sh
+      echo "  printf \"\\r[  ] Mise à jour du serveur ... \${spin:\$i:1}\"" >> /opt/scripts/ark-restart.sh
+      echo "  sleep .1" >> /opt/scripts/ark-restart.sh
+      echo "done" >> /opt/scripts/ark-restart.sh
+      echo "printf \"\$mon_printf\" && printf \"\\r\"" >> /opt/scripts/ark-restart.sh
+      echo "echo -e \"\\r[\\e[42m\\u2713 \e[0m] Le serveur a été mis à jour\"" >> /opt/scripts/ark-restart.sh
+      echo "bash $script_discord \":construction: Le serveur a été mis à jour :construction:\"" >> /opt/scripts/ark-restart.sh
+      chmod +x /opt/scripts/ark-restart.sh
+su $user_arkserver <<'EOF'
+bash /opt/scripts/ark-restart.sh
+EOF
+    fi
     eval 'echo -e "\r[\e[42m\u2713 \e[0m] Pas de nécessité de redémarrer le serveur"' $mon_log_perso
     if [[ "$push_maj_serveur" == "oui" ]]; then
       message_reboot=`echo -e "Pas de nécessité de redémarrer le serveur: aucun serveur démarré."`
