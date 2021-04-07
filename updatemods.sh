@@ -6,7 +6,7 @@
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && shc -f updatemods.sh -o updatemods.bin && chmod +x updatemods.bin && rm -f *.x.c && rm -f updatemods.sh
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && chmod +x updatemods.sh
 ## Micro-config
-version="Version: 0.0.0.74" #base du système de mise à jour
+version="Version: 0.0.0.75" #base du système de mise à jour
 description="Téléchargeur de Mods pour ARK: Survival Evolved" #description pour le menu
 script_github="https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh" #emplacement du script original
 changelog_github="https://pastebin.com/raw/vJpabVtT" #emplacement du changelog de ce script
@@ -264,7 +264,7 @@ if [[ -f "$mon_script_updater" ]] ; then
 fi
  
 #### Vérification de version pour éventuelle mise à jour
-version_distante=`wget -O- -q "$script_github" | grep "Version:" | awk '{ print $2 }' | sed -n 1p | awk '{print $1}' | sed -e 's/\r//g' | sed 's/"//g'`
+version_distante=`wget -O- -q "$script_github" | grep "Version:" | awk '{ print $2 }' | sed -n 1p | awk '{print $1}' | sed 's/\r//g' | sed 's/"//g'`
 version_locale=`echo $version | awk '{print $2}'`
  
 vercomp () {
@@ -634,33 +634,34 @@ i=0
 while kill -0 $pid 2>/dev/null
 do
   i=$(( (i+1) %4 ))
-  printf "\r[  ] Détection de nombre de joueurs connectés au serveur ... ${spin:$i:1}"
+  printf "\r[  ] Détection du nombre de joueurs connectés au serveur ... ${spin:$i:1}"
   sleep .1
 done
 printf "$mon_printf" && printf "\r"
 
 #### recherche du chemin et de la liste des serveurs
-printf "\r[  ] Détection de nombre de joueurs connectés au serveur ..."
+printf "\r[  ] Détection du nombre de joueurs connectés au serveur ..."
 chemin_serveur=`locate \/arkserver | sed '/\/usb_save\//d' |  sed '/\/SAUVEGARDE\//d' | sed '/\/lgsm\//d' | sed '/\/log\//d' | sed '/\/.config\/argos\//d' | grep "\/arkserver$" | xargs dirname`
-liste_serveurs=`locate \/arkserver | grep "$chemin_serveur" | sed '/\/usb_save\//d' |  sed '/\/SAUVEGARDE\//d' | sed '/\/lgsm\//d' | sed '/\/log\//d' | sed -e "s|$chemin_serveur\/||g"`
+liste_serveurs=`locate \/arkserver | grep "$chemin_serveur" | sed '/\/usb_save\//d' |  sed '/\/SAUVEGARDE\//d' | sed '/\/lgsm\//d' | sed '/\/log\//d' | sed "s|$chemin_serveur\/||g"`
 arkserver_GameUserSettings=`echo $chemin_serveur"/serverfiles/ShooterGame/Saved/Config/LinuxServer/GameUserSettings.ini"`
-server_admin_password=`cat "$arkserver_GameUserSettings" | grep "^ServerAdminPassword=" | sed -e "s/ServerAdminPassword=//g"`
+server_admin_password=`cat "$arkserver_GameUserSettings" | grep '^ServerAdminPassword=' | sed 's/ServerAdminPassword=//g'`
 
 numero_serveur=0
 players_total_serveur=0
 for sh_actuel in $liste_serveurs ; do
   sh_serveurs+=("$sh_actuel")
   if [[ -f "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" ]]; then
-    map_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "^defaultmap=" | sed -e "s/defaultmap=\"//g" | sed -e "s/\"//g"`)
-    serveur_name=`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "SessionName=" | sed 's/.*SessionName=//g' | sed 's/?.*//g'`
+	map_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep '^defaultmap=' | sed 's/defaultmap=\"//g' | sed 's/\"//g'`)
+    serveur_name=`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep 'SessionName=' | sed 's/.*SessionName=//g' | sed 's/?.*//g' | sed 's/\\\"//g'`
     sessionname_serveurs+=("$serveur_name")
-    port_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "^port=" | sed -e "s/port=\"//g" | sed -e "s/\"//g"`)
-    queryport_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "^queryport=" | sed -e "s/queryport=\"//g" | sed -e "s/\"//g"`)
-    rconport_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "^rconport=" | sed -e "s/rconport=\"//g" | sed -e "s/\"//g"`)
-    process_arkserver=`ps aux | grep "./ShooterGameServer ${map_serveurs[$numero_serveur]}" | grep "?Port=${port_serveurs[$numero_serveur]}?" | sed '/grep/d' | awk '{print $2}'`
-    if [[ "$process_arkserver" != "" ]]; then
+    sessionname_serveurs+=("")
+    port_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep '^port=' | sed 's/port=\"//g' | sed 's/\"//g'`)
+    queryport_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep '^queryport=' | sed -e 's/queryport=\"//g' | sed 's/\"//g'`)
+    rconport_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep '^rconport=' | sed 's/rconport=\"//g' | sed 's/\"//g'`)
+    process_arkserver=`ps aux | sed '/tmux/d' | grep "./ShooterGameServer ${map_serveurs[$numero_serveur]}" | grep "?Port=${port_serveurs[$numero_serveur]}?" | sed '/grep/d' | awk '{print $2}'`
+	if [[ "$process_arkserver" != "" ]]; then
       $dossier_config/rcon -P$server_admin_password -a$ip_locale -p${rconport_serveurs[$numero_serveur]} listplayers > $dossier_config/rcon_$numero_serveur.txt
-      players_connected=`cat $dossier_config/rcon_$numero_serveur.txt | grep "No Players Connected"`
+      players_connected=`cat $dossier_config/rcon_$numero_serveur.txt | grep 'No Players Connected'`
       if [[ "$players_connected" == "" ]]; then
         cat $dossier_config/rcon_$numero_serveur.txt | sed '/^$/d' | cut -c 4- | cut -d , -f 1 | sed '$d' > $dossier_config/list_players.txt
         players=`wc -l < $dossier_config/list_players.txt`
@@ -674,7 +675,7 @@ for sh_actuel in $liste_serveurs ; do
   else
     map_serveurs+=("0")
     serveur_name="Serveur non configuré"
-    sessionname_serveurs+=("$serveur_name")
+    sessionname_serveurs+=("")
     port_serveurs+=("0")
     rconport_serveurs+=("0")
     players_serveurs+=("0")
@@ -695,35 +696,35 @@ fi
 rm -f rcon_* 2>/dev/null
 nombre_serveur=`echo ${#map_serveurs[@]}`
 
-url_steamdb="https://steamdb.info/app/376030/depots"
-wget -q --timeout=2 --waitretry=0 --tries=2  "$url_steamdb" -O "$dossier_config/steamdb.log" &
-pid=$!
-spin='-\|/'
-i=0
-while kill -0 $pid 2>/dev/null
-do
-  i=$(( (i+1) %4 ))
-  printf "\r[  ] Vérification de la version du serveur sur SteamDB.info... ${spin:$i:1}"
-  sleep .1
-done
-printf "$mon_printf" && printf "\r"
-availablebuild=`cat "$dossier_config/steamdb.log" | grep "href=\"/patchnotes/" | grep "rel=\"nofollow\">" | sed -n 1p | sed 's|.*/patchnotes/||' | sed -e 's|/".*||'`
-rm $dossier_config/steamdb.log
-
-rm -rf ~/.steam/appcache
-#steamcmd +login anonymous +app_info_update 1 +app_info_print 376030 +quit > $dossier_config/availablebuild.log &
+#url_steamdb="https://steamdb.info/app/376030/depots"
+#wget -q --timeout=2 --waitretry=0 --tries=2  "$url_steamdb" -O "$dossier_config/steamdb.log" &
 #pid=$!
 #spin='-\|/'
 #i=0
 #while kill -0 $pid 2>/dev/null
 #do
 #  i=$(( (i+1) %4 ))
-#  printf "\r[  ] Vérification de la version du serveur ... ${spin:$i:1}"
+#  printf "\r[  ] Vérification de la version du serveur sur SteamDB.info... ${spin:$i:1}"
 #  sleep .1
 #done
 #printf "$mon_printf" && printf "\r"
-#availablebuild=`cat $dossier_config/availablebuild.log | grep -EA 1000 "^\s+\"branches\"$" | grep -EA 5 "^\s+\"public\"$" | grep -m 1 -EB 10 "^\s+}$" | grep -E "^\s+\"buildid\"\s+" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d' ' -f3`
-#rm $dossier_config/availablebuild.log
+#availablebuild=`cat "$dossier_config/steamdb.log" | grep "href=\"/patchnotes/" | grep "rel=\"nofollow\">" | sed -n 1p | sed 's|.*/patchnotes/||' | sed -e 's|/".*||'`
+#rm $dossier_config/steamdb.log
+
+rm -rf ~/.steam/appcache
+steamcmd +login anonymous +app_info_update 1 +app_info_print 376030 +quit > $dossier_config/availablebuild.log &
+pid=$!
+spin='-\|/'
+i=0
+while kill -0 $pid 2>/dev/null
+do
+  i=$(( (i+1) %4 ))
+  printf "\r[  ] Vérification de la version du serveur ... ${spin:$i:1}"
+  sleep .1
+done
+printf "$mon_printf" && printf "\r"
+availablebuild=`cat $dossier_config/availablebuild.log | grep -EA 1000 "^\s+\"branches\"$" | grep -EA 5 "^\s+\"public\"$" | grep -m 1 -EB 10 "^\s+}$" | grep -E "^\s+\"buildid\"\s+" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d' ' -f3`
+rm $dossier_config/availablebuild.log
 
 maj_serveur="non"
 if [ -n "$nom_serveur" ] && [ -n "$chemin_serveur" ]; then
@@ -798,7 +799,7 @@ fi
 
 chemin_GameUserSettings=`echo $chemin_serveur"/serverfiles/ShooterGame/Saved/Config/LinuxServer/GameUserSettings.ini"`
 if [[ -f "$chemin_GameUserSettings" ]]; then
-  activemods=`cat "$chemin_GameUserSettings" | grep "ActiveMods=" | sed -e "s/ActiveMods=//g"`
+  activemods=`cat "$chemin_GameUserSettings" | grep "ActiveMods=" | sed "s/ActiveMods=//g"`
   if [[ -n "$activemods" ]]; then
     eval 'echo -e "[\e[42m\u2713 \e[0m] Mods présent dans le fichier de configuration du serveur :\n ... "$activemods' $mon_log_perso
   fi
@@ -823,7 +824,10 @@ for modId in ${activemods//,/ }; do
     echo "Mod_"$modId"=\""$modName"\"" >> /root/.config/updatemods/modinfo.db
   fi
   
-  info_version_mod_disponible=`curl -s "https://steamcommunity.com/sharedfiles/filedetails/?id=$modId" | sed -n 's|^.*<div class="detailsStatRight">\([^<]*\)</div>.*|\1|p' | sed -n 3p`
+  info_version_mod_disponible=""
+  while [[ "$info_version_mod_disponible" == "" ]]; do
+    info_version_mod_disponible=`curl -s "https://steamcommunity.com/sharedfiles/filedetails/?id=$modId" | sed -n 's|^.*<div class="detailsStatRight">\([^<]*\)</div>.*|\1|p' | sed -n 3p`
+  done
   info_version_mod_local=""
   if [[ -f "$modExtractDir/.updatemods.info" ]] && [[ "$force_dl" == "non" ]] ;then 
     info_version_mod_local=`cat "$modExtractDir/.updatemods.info"`
@@ -1096,7 +1100,7 @@ if [[ "$restart_necessaire" == "oui" ]]; then
   chown $user_arkserver:$user_arkserver -R "$chemin_serveur"
   numero_serveur=0
   while [[ $numero_serveur != $nombre_serveur ]]; do  
-    process_arkserver=`ps aux | grep "./ShooterGameServer ${map_serveurs[$numero_serveur]}" | grep "?Port=${port_serveurs[$numero_serveur]}?" | sed '/grep/d' | awk '{print $2}'`
+	process_arkserver=`ps aux | sed '/tmux/d' | grep "./ShooterGameServer ${map_serveurs[$numero_serveur]}" | grep "?Port=${port_serveurs[$numero_serveur]}?" | sed '/grep/d' | awk '{print $2}'`
     if [[ "$process_arkserver" != "" ]]; then
       echo "#!/bin/bash" > /opt/scripts/ark-restart.sh
       echo "mon_printf=\"\\r                                                                                           \"" >> /opt/scripts/ark-restart.sh
