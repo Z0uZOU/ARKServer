@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-version="0.0.0.13"
+version="0.0.0.14"
 
 
 #### Mes paramètres
@@ -245,33 +245,32 @@ crontab_serveurs=()
 #server_admin_password_serveurs=()
 ip_locale=`hostname -I | cut -d' ' -f1`
 ip_distante=`dig -b $ip_locale +short myip.opendns.com @resolver1.opendns.com`
-
-chemin_serveur=`locate \/arkserver | sed '/\/usb_save\//d' | sed '/\/lgsm\//d' | sed '/\/log\//d' | sed '/\/.config\/argos\//d' | grep "\/arkserver$" | xargs dirname`
+chemin_serveur=`locate \/arkserver | sed '/\/usb_save\//d' | sed '/\/lgsm\//d' | sed '/\/log\//d' | sed '/\/SAUVEGARDE\//d' | sed '/\/.config\/argos\//d' | grep "\/arkserver$" | xargs dirname`
 if [[ "$chemin_serveur" != "" ]]; then 
-  liste_serveurs=`locate \/arkserver | grep "$chemin_serveur" | sed '/\/usb_save\//d' | sed '/\/lgsm\//d' | sed '/\/log\//d' | sed -e "s|$chemin_serveur\/||g"`
+  liste_serveurs=`locate \/arkserver | grep "$chemin_serveur" | sed '/\/usb_save\//d' | sed '/\/lgsm\//d' | sed '/\/log\//d' | sed "s|$chemin_serveur\/||g"`
   arkserver_GameUserSettings=`echo $chemin_serveur"/serverfiles/ShooterGame/Saved/Config/LinuxServer/GameUserSettings.ini"`
-  server_password=`cat "$arkserver_GameUserSettings" | grep "^ServerPassword=" | sed -e "s/ServerPassword=//g"`
-  server_admin_password=`cat "$arkserver_GameUserSettings" | grep "^ServerAdminPassword=" | sed -e "s/ServerAdminPassword=//g"`
+  server_password=`cat "$arkserver_GameUserSettings" | grep "^ServerPassword=" | sed "s/ServerPassword=//g"`
+  server_admin_password=`cat "$arkserver_GameUserSettings" | grep "^ServerAdminPassword=" | sed "s/ServerAdminPassword=//g"`
   if [[ "$asterisk" == "TRUE" ]]; then
     server_admin_password_affichage=`echo $server_admin_password | tr "[[:print:]]" "#"`
   else
     server_admin_password_affichage=$server_admin_password
   fi
-  server_version=`cat "$chemin_serveur/serverfiles/version.txt" | sed -e 's/ //g'`
-  activemods=`cat "$arkserver_GameUserSettings" | grep "^ActiveMods=" | sed -e "s/ActiveMods=//g"`
+  server_version=`cat "$chemin_serveur/serverfiles/version.txt" | sed 's/ //g'`
+  activemods=`cat "$arkserver_GameUserSettings" | grep "^ActiveMods=" | sed "s/ActiveMods=//g"`
   
   numero_serveur=0
   for sh_actuel in $liste_serveurs ; do
     sh_serveurs+=("$sh_actuel")
     if [[ -f "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" ]]; then
-      map_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "^defaultmap=" | sed -e "s/defaultmap=\"//g" | sed -e "s/\"//g"`)
-      sessionname=`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "SessionName=" | sed 's/.*SessionName=//g' | sed 's/?.*//g'`
-      sessionname_serveurs+=("$sessionname")
-      ip_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "^ip=" | sed -e "s/ip=\"//g" | sed -e "s/\"//g"`)
-      port_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "^port=" | sed -e "s/port=\"//g" | sed -e "s/\"//g"`)
-      queryport_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "^queryport=" | sed -e "s/queryport=\"//g" | sed -e "s/\"//g"`)
-      rconport_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "^rconport=" | sed -e "s/rconport=\"//g" | sed -e "s/\"//g"`)
-      maxplayers_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "^maxplayers=" | sed -e "s/maxplayers=\"//g" | sed -e "s/\"//g"`)
+      map_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "^defaultmap=" | sed "s/defaultmap=\"//g" | sed "s/\"//g"`)
+      serveur_name=`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep 'SessionName=' | sed 's/.*SessionName=//g' | sed 's/?.*//g' | sed 's/\\\"//g'`
+      sessionname_serveurs+=("$serveur_name")
+      ip_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "^ip=" | sed "s/ip=\"//g" | sed "s/\"//g"`)
+      port_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "^port=" | sed "s/port=\"//g" | sed "s/\"//g"`)
+      queryport_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "^queryport=" | sed "s/queryport=\"//g" | sed "s/\"//g"`)
+      rconport_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "^rconport=" | sed "s/rconport=\"//g" | sed "s/\"//g"`)
+      maxplayers_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "^maxplayers=" | sed "s/maxplayers=\"//g" | sed "s/\"//g"`)
       modids=`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep "GameModIds=" | sed 's/.*GameModIds=//g' | sed 's/?.*//g'`
       if [[ "$modids" != "" ]]; then
         modids_serveurs+=("$modids")
@@ -291,7 +290,7 @@ if [[ "$chemin_serveur" != "" ]]; then
         fi
       fi
       #server_admin_password_serveurs+=("$server_admin_password")
-      process_arkserver=`ps aux | grep "./ShooterGameServer ${map_serveurs[$numero_serveur]}" | grep "?Port=${port_serveurs[$numero_serveur]}?" | sed '/grep/d' | awk '{print $2}'`
+      process_arkserver=`ps aux | sed '/tmux/d' | grep "./ShooterGameServer ${map_serveurs[$numero_serveur]}" | grep "?Port=${port_serveurs[$numero_serveur]}?" | sed '/grep/d' | awk '{print $2}'`
       if [[ "$process_arkserver" != "" ]]; then
         mn_actuelle=`date +"%M"`
         if [[ "$mn_actuelle" == "00" ]] || [[ "$mn_actuelle" == "10" ]] || [[ "$mn_actuelle" == "20" ]] || [[ "$mn_actuelle" == "30" ]] || [[ "$mn_actuelle" == "40" ]] || [[ "$mn_actuelle" == "50" ]] || [[ ! -f "$HOME/.config/argos/arkserver/rcon_$numero_serveur.txt" ]]; then
@@ -371,21 +370,21 @@ fi
 #### CrossArkChat
 chemin_crossarkchat=`locate \/CrossArkChat | sed '/\/usb_save\//d' | grep "\/CrossArkChat$" | xargs dirname`
 if [[ "$chemin_crossarkchat" != "" ]]; then
-  #map_serveurs=`cat "$chemin_crossarkchat/Config/_configuration.json" | grep "\"NameTag\"" | sed -e "s/.*: \"//g" | sed -e "s/\",//g"`
+  #map_serveurs=`cat "$chemin_crossarkchat/Config/_configuration.json" | grep "\"NameTag\"" | sed "s/.*: \"//g" | sed "s/\",//g"`
   process_crossarkchat=`ps aux | grep "/CrossArkChat$" | sed '/grep/d' | awk '{print $2}'`
 #  if [[ "$chemin_serveur" == "" ]]; then
 #    source "$HOME/.config/argos/.crossarkchat.ini"
 #    numero_serveur=1
-#    nom_du_serveur=`cat "$HOME/.config/argos/.crossarkchat.ini" | grep "^map_$numero_serveur=" | sed -e "s/=\"//g" | sed -e "s/\"//g"`
+#    nom_du_serveur=`cat "$HOME/.config/argos/.crossarkchat.ini" | grep "^map_$numero_serveur=" | sed "s/=\"//g" | sed "s/\"//g"`
 #    while [[ "$nom_du_serveur" != "" ]]; do
-#      sessionname_serveurs+=(`cat "$HOME/.config/argos/.crossarkchat.ini" | grep "^nom_$numero_serveur=" | sed -e "s/.*=\"//g" | sed -e "s/\"//g"`)
-#      map_serveurs+=(`cat "$HOME/.config/argos/.crossarkchat.ini" | grep "^map_$numero_serveur=" | sed -e "s/.*=\"//g" | sed -e "s/\"//g"`)
+#      sessionname_serveurs+=(`cat "$HOME/.config/argos/.crossarkchat.ini" | grep "^nom_$numero_serveur=" | sed "s/.*=\"//g" | sed "s/\"//g"`)
+#      map_serveurs+=(`cat "$HOME/.config/argos/.crossarkchat.ini" | grep "^map_$numero_serveur=" | sed "s/.*=\"//g" | sed "s/\"//g"`)
 #      ip_serveurs+=(`eval echo "\\$ip_"$sernumero_serveurveur`)
 #      rconport_serveurs+=(`eval echo "\\$port_"$numero_serveur`)
 #      server_admin_password_serveurs+=(`eval echo "\\$password_"$numero_serveur`)
 #      #list_players_serveurs+=(`eval echo "\\$map_"$serveur`)
 #      numero_serveur=$(expr $numero_serveur + 1)
-#      nom_du_serveur=`cat "$HOME/.config/argos/.crossarkchat.ini" | grep "^map_$numero_serveur=" | sed -e "s/=\"//g" | sed -e "s/\"//g"`
+#      nom_du_serveur=`cat "$HOME/.config/argos/.crossarkchat.ini" | grep "^map_$numero_serveur=" | sed "s/=\"//g" | sed "s/\"//g"`
 #    done
 #  fi
 fi
@@ -438,9 +437,9 @@ while [[ $numero_serveur != $nombre_serveur ]]; do
     arkserver_nom_map="Valguero"
   fi
   if [[ "${map_serveurs[$numero_serveur]}" == "Viking_P" ]]; then
-    arkserver_nom_map="Fjördur"
+    arkserver_nom_map="Fjordur"
   fi
-  process_arkserver=`ps aux | grep "./ShooterGameServer ${map_serveurs[$numero_serveur]}" | grep "?Port=${port_serveurs[$numero_serveur]}?" | sed '/grep/d' | awk '{print $2}'`
+  process_arkserver=`ps aux | sed '/tmux/d' | grep "./ShooterGameServer ${map_serveurs[$numero_serveur]}" | grep "?Port=${port_serveurs[$numero_serveur]}?" | sed '/grep/d' | awk '{print $2}'`
   if [[ "$process_arkserver" != "" ]]; then
     ark_cpu=`ps -p $process_arkserver -o %cpu | sed -n '2p' | awk '{print $1}'`
     ark_mem=`ps -p $process_arkserver -o %mem | sed -n '2p' | awk '{print $1}'`

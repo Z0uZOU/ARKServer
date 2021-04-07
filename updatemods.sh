@@ -654,7 +654,6 @@ for sh_actuel in $liste_serveurs ; do
 	map_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep '^defaultmap=' | sed 's/defaultmap=\"//g' | sed 's/\"//g'`)
     serveur_name=`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep 'SessionName=' | sed 's/.*SessionName=//g' | sed 's/?.*//g' | sed 's/\\\"//g'`
     sessionname_serveurs+=("$serveur_name")
-    sessionname_serveurs+=("")
     port_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep '^port=' | sed 's/port=\"//g' | sed 's/\"//g'`)
     queryport_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep '^queryport=' | sed -e 's/queryport=\"//g' | sed 's/\"//g'`)
     rconport_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep '^rconport=' | sed 's/rconport=\"//g' | sed 's/\"//g'`)
