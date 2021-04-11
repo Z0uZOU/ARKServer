@@ -6,7 +6,7 @@
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && shc -f updatemods.sh -o updatemods.bin && chmod +x updatemods.bin && rm -f *.x.c && rm -f updatemods.sh
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && chmod +x updatemods.sh
 ## Micro-config
-version="Version: 0.0.0.75" #base du système de mise à jour
+version="Version: 0.0.0.76" #base du système de mise à jour
 description="Téléchargeur de Mods pour ARK: Survival Evolved" #description pour le menu
 script_github="https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh" #emplacement du script original
 changelog_github="https://pastebin.com/raw/vJpabVtT" #emplacement du changelog de ce script
@@ -711,24 +711,26 @@ nombre_serveur=`echo ${#map_serveurs[@]}`
 #rm $dossier_config/steamdb.log
 
 rm -rf ~/.steam/appcache
-steamcmd +login anonymous +app_info_update 1 +app_info_print 376030 +quit > $dossier_config/availablebuild.log &
-pid=$!
-spin='-\|/'
-i=0
-while kill -0 $pid 2>/dev/null
-do
-  i=$(( (i+1) %4 ))
-  printf "\r[  ] Vérification de la version du serveur ... ${spin:$i:1}"
-  sleep .1
+availablebuild=""
+while [[ "$availablebuild" == "" ]]; do
+  steamcmd +login anonymous +app_info_update 1 +app_info_print 376030 +quit > $dossier_config/availablebuild.log &
+  pid=$!
+  spin='-\|/'
+  i=0
+  while kill -0 $pid 2>/dev/null
+  do
+    i=$(( (i+1) %4 ))
+    printf "\r[  ] Vérification de la version du serveur disponible ... ${spin:$i:1}"
+    sleep .1
+  done
+  availablebuild=`cat $dossier_config/availablebuild.log | grep -EA 1000 "^\s+\"branches\"$" | grep -EA 5 "^\s+\"public\"$" | grep -m 1 -EB 10 "^\s+}$" | grep -E "^\s+\"buildid\"\s+" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d' ' -f3`
 done
 printf "$mon_printf" && printf "\r"
-availablebuild=`cat $dossier_config/availablebuild.log | grep -EA 1000 "^\s+\"branches\"$" | grep -EA 5 "^\s+\"public\"$" | grep -m 1 -EB 10 "^\s+}$" | grep -E "^\s+\"buildid\"\s+" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d' ' -f3`
 rm $dossier_config/availablebuild.log
 
 maj_serveur="non"
 if [ -n "$nom_serveur" ] && [ -n "$chemin_serveur" ]; then
   currentbuild=`grep buildid "$chemin_serveur/serverfiles/steamapps/appmanifest_376030.acf" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d\  -f3`
-  
   compare=`testvercomp $currentbuild $availablebuild '<' | grep Pass`
   if [[ "$compare" != "" ]] ; then
     eval 'echo -e "[\e[42m\u2713 \e[0m] Une mise à jour du serveur $nom_serveur est disponible:"' $mon_log_perso
