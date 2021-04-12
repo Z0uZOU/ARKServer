@@ -6,7 +6,7 @@
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && shc -f updatemods.sh -o updatemods.bin && chmod +x updatemods.bin && rm -f *.x.c && rm -f updatemods.sh
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && chmod +x updatemods.sh
 ## Micro-config
-version="Version: 0.0.0.76" #base du système de mise à jour
+version="Version: 0.0.0.77" #base du système de mise à jour
 description="Téléchargeur de Mods pour ARK: Survival Evolved" #description pour le menu
 script_github="https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh" #emplacement du script original
 changelog_github="https://pastebin.com/raw/vJpabVtT" #emplacement du changelog de ce script
@@ -651,14 +651,14 @@ players_total_serveur=0
 for sh_actuel in $liste_serveurs ; do
   sh_serveurs+=("$sh_actuel")
   if [[ -f "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" ]]; then
-	map_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep '^defaultmap=' | sed 's/defaultmap=\"//g' | sed 's/\"//g'`)
+  	map_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep '^defaultmap=' | sed 's/defaultmap=\"//g' | sed 's/\"//g'`)
     serveur_name=`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep 'SessionName=' | sed 's/.*SessionName=//g' | sed 's/?.*//g' | sed 's/\\\"//g'`
     sessionname_serveurs+=("$serveur_name")
     port_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep '^port=' | sed 's/port=\"//g' | sed 's/\"//g'`)
     queryport_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep '^queryport=' | sed -e 's/queryport=\"//g' | sed 's/\"//g'`)
     rconport_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep '^rconport=' | sed 's/rconport=\"//g' | sed 's/\"//g'`)
     process_arkserver=`ps aux | sed '/tmux/d' | grep "./ShooterGameServer ${map_serveurs[$numero_serveur]}" | grep "?Port=${port_serveurs[$numero_serveur]}?" | sed '/grep/d' | awk '{print $2}'`
-	if [[ "$process_arkserver" != "" ]]; then
+	  if [[ "$process_arkserver" != "" ]]; then
       $dossier_config/rcon -P$server_admin_password -a$ip_locale -p${rconport_serveurs[$numero_serveur]} listplayers > $dossier_config/rcon_$numero_serveur.txt
       players_connected=`cat $dossier_config/rcon_$numero_serveur.txt | grep 'No Players Connected'`
       if [[ "$players_connected" == "" ]]; then
@@ -713,7 +713,7 @@ nombre_serveur=`echo ${#map_serveurs[@]}`
 rm -rf ~/.steam/appcache
 availablebuild=""
 while [[ "$availablebuild" == "" ]]; do
-  steamcmd +login anonymous +app_info_update 1 +app_info_print 376030 +quit > $dossier_config/availablebuild.log &
+  steamcmd +login anonymous +app_info_update 1 +app_info_print 376030 +quit 2>/dev/null > $dossier_config/availablebuild.log &
   pid=$!
   spin='-\|/'
   i=0
@@ -1101,7 +1101,7 @@ if [[ "$restart_necessaire" == "oui" ]]; then
   chown $user_arkserver:$user_arkserver -R "$chemin_serveur"
   numero_serveur=0
   while [[ $numero_serveur != $nombre_serveur ]]; do  
-	process_arkserver=`ps aux | sed '/tmux/d' | grep "./ShooterGameServer ${map_serveurs[$numero_serveur]}" | grep "?Port=${port_serveurs[$numero_serveur]}?" | sed '/grep/d' | awk '{print $2}'`
+	  process_arkserver=`ps aux | sed '/tmux/d' | grep "./ShooterGameServer ${map_serveurs[$numero_serveur]}" | grep "?Port=${port_serveurs[$numero_serveur]}?" | sed '/grep/d' | awk '{print $2}'`
     if [[ "$process_arkserver" != "" ]]; then
       echo "#!/bin/bash" > /opt/scripts/ark-restart.sh
       echo "mon_printf=\"\\r                                                                                           \"" >> /opt/scripts/ark-restart.sh
