@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-version="0.0.0.14"
+version="0.0.0.15"
 
 
 #### Mes paramètres
@@ -290,7 +290,7 @@ if [[ "$chemin_serveur" != "" ]]; then
         fi
       fi
       #server_admin_password_serveurs+=("$server_admin_password")
-      process_arkserver=`ps aux | sed '/tmux/d' | grep "./ShooterGameServer ${map_serveurs[$numero_serveur]}" | grep "?Port=${port_serveurs[$numero_serveur]}?" | sed '/grep/d' | awk '{print $2}'`
+      process_arkserver=`ps aux | sed '/tmux/d' | grep "./ShooterGameServer -i \(/Game/Mods/.*/${map_serveurs[$numero_serveur]}\|${map_serveurs[$numero_serveur]}\)" | grep "?Port=${port_serveurs[$numero_serveur]}?" | sed '/grep/d' | awk '{print $2}'`
       if [[ "$process_arkserver" != "" ]]; then
         mn_actuelle=`date +"%M"`
         if [[ "$mn_actuelle" == "00" ]] || [[ "$mn_actuelle" == "10" ]] || [[ "$mn_actuelle" == "20" ]] || [[ "$mn_actuelle" == "30" ]] || [[ "$mn_actuelle" == "40" ]] || [[ "$mn_actuelle" == "50" ]] || [[ ! -f "$HOME/.config/argos/arkserver/rcon_$numero_serveur.txt" ]]; then
@@ -439,7 +439,7 @@ while [[ $numero_serveur != $nombre_serveur ]]; do
   if [[ "${map_serveurs[$numero_serveur]}" == "Viking_P" ]]; then
     arkserver_nom_map="Fjordur"
   fi
-  process_arkserver=`ps aux | sed '/tmux/d' | grep "./ShooterGameServer ${map_serveurs[$numero_serveur]}" | grep "?Port=${port_serveurs[$numero_serveur]}?" | sed '/grep/d' | awk '{print $2}'`
+  process_arkserver=`ps aux | sed '/tmux/d' | grep -i "./ShooterGameServer \(/Game/Mods/.*/${map_serveurs[$numero_serveur]}\|${map_serveurs[$numero_serveur]}\)" | grep "?Port=${port_serveurs[$numero_serveur]}?" | sed '/grep/d' | awk '{print $2}'`
   if [[ "$process_arkserver" != "" ]]; then
     ark_cpu=`ps -p $process_arkserver -o %cpu | sed -n '2p' | awk '{print $1}'`
     ark_mem=`ps -p $process_arkserver -o %mem | sed -n '2p' | awk '{print $1}'`
