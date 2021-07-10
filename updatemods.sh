@@ -6,7 +6,7 @@
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && shc -f updatemods.sh -o updatemods.bin && chmod +x updatemods.bin && rm -f *.x.c && rm -f updatemods.sh
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && chmod +x updatemods.sh
 ## Micro-config
-version="Version: 0.0.0.78" #base du système de mise à jour
+version="Version: 0.0.0.79" #base du système de mise à jour
 description="Téléchargeur de Mods pour ARK: Survival Evolved" #description pour le menu
 script_github="https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh" #emplacement du script original
 changelog_github="https://pastebin.com/raw/vJpabVtT" #emplacement du changelog de ce script
@@ -1101,7 +1101,8 @@ if [[ "$restart_necessaire" == "oui" ]]; then
   chown $user_arkserver:$user_arkserver -R "$chemin_serveur"
   numero_serveur=0
   while [[ $numero_serveur != $nombre_serveur ]]; do  
-      process_arkserver=`ps aux | sed '/tmux/d' | grep "./ShooterGameServer -i \(/Game/Mods/.*/${map_serveurs[$numero_serveur]}\|${map_serveurs[$numero_serveur]}\)" | grep "?Port=${port_serveurs[$numero_serveur]}?" | sed '/grep/d' | awk '{print $2}'`    if [[ "$process_arkserver" != "" ]]; then
+    process_arkserver=`ps aux | sed '/tmux/d' | grep "./ShooterGameServer -i \(/Game/Mods/.*/${map_serveurs[$numero_serveur]}\|${map_serveurs[$numero_serveur]}\)" | grep "?Port=${port_serveurs[$numero_serveur]}?" | sed '/grep/d' | awk '{print $2}'`
+    if [[ "$process_arkserver" != "" ]]; then
       echo "#!/bin/bash" > /opt/scripts/ark-restart.sh
       echo "mon_printf=\"\\r                                                                                           \"" >> /opt/scripts/ark-restart.sh
       echo "bash $script_discord \":construction: Redémarrage du serveur ${sessionname_serveurs[$numero_serveur]} :construction:\"" >> /opt/scripts/ark-restart.sh
