@@ -6,7 +6,7 @@
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && shc -f updatemods.sh -o updatemods.bin && chmod +x updatemods.bin && rm -f *.x.c && rm -f updatemods.sh
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && chmod +x updatemods.sh
 ## Micro-config
-version="Version: 0.0.0.81" #base du système de mise à jour
+version="Version: 1.0.0.0" #base du système de mise à jour
 description="Téléchargeur de Mods pour ARK: Survival Evolved" #description pour le menu
 script_github="https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh" #emplacement du script original
 changelog_github="https://pastebin.com/raw/vJpabVtT" #emplacement du changelog de ce script
@@ -424,7 +424,7 @@ echo "------"
  
 #### VERIFICATION DES DEPENDANCES
 ##########################
-eval 'echo -e "\e[44m\u2263\u2263  \e[0m \e[44m \e[1mVÉRIFICATION DE(S) DÉPENDANCE(S)  \e[0m \e[44m  \e[0m \e[44m \e[0m \e[34m\u2759\e[0m"' $mon_log_perso
+eval 'printf  "\e[44m\u2263\u2263  \e[0m \e[44m \e[1m %-63s  \e[0m \e[44m  \e[0m \e[44m \e[0m \e[34m\u2759\e[0m\n" "$mui_section_dependencies"' $mon_log_perso
  
 #### Vérification et installation des repositories (apt)
 for repo in $required_repos ; do
@@ -595,8 +595,8 @@ NORMAL="\\033[0;39m"
 restart_necessaire="" # Variable permettant le restart du serveur
 script_discord="/opt/scripts/discord.sh --text"
 annonce_discord="non"
- 
-eval 'echo -e "\e[44m\u2263\u2263  \e[0m \e[44m \e[1mINFORMATIONS SERVEUR  \e[0m \e[44m  \e[0m \e[44m \e[0m \e[34m\u2759\e[0m"' $mon_log_perso
+
+eval 'printf  "\e[44m\u2263\u2263  \e[0m \e[44m \e[1m %-63s  \e[0m \e[44m  \e[0m \e[44m \e[0m \e[34m\u2759\e[0m\n" "$mui_section_server_infos"' $mon_log_perso
 sh_serveurs=()
 map_serveurs=()
 sessionname_serveurs=()
@@ -783,7 +783,7 @@ if [ -n "$nom_serveur" ] && [ -n "$chemin_serveur" ]; then
   fi
 fi
 
-eval 'echo -e "\e[44m\u2263\u2263  \e[0m \e[44m \e[1mTÉLÉCHARGEMENTS DES MODS  \e[0m \e[44m  \e[0m \e[44m \e[0m \e[34m\u2759\e[0m"' $mon_log_perso
+eval 'printf  "\e[44m\u2263\u2263  \e[0m \e[44m \e[1m %-63s  \e[0m \e[44m  \e[0m \e[44m \e[0m \e[34m\u2759\e[0m\n" "$mui_section_mods_download"' $mon_log_perso
 
 if [[ "$mod_branch" == "Linux" ]]; then
   eval 'echo -e "[\e[43m\u2713 \e[0m] Les mods seront téléchargés en version Linux. Il est conseillé de les prendre en version Windows, la version Linux peut causer des plantages du server"' $mon_log_perso
@@ -1092,7 +1092,7 @@ for modId in ${activemods//,/ }; do
   fi
 done
 
-eval 'echo -e "\e[44m\u2263\u2263  \e[0m \e[44m \e[1mREDÉMARRAGE DU SERVEUR  \e[0m \e[44m  \e[0m \e[44m \e[0m \e[34m\u2759\e[0m"' $mon_log_perso
+eval 'printf  "\e[44m\u2263\u2263  \e[0m \e[44m \e[1m %-63s  \e[0m \e[44m  \e[0m \e[44m \e[0m \e[34m\u2759\e[0m\n" "$mui_section_server_reboot"' $mon_log_perso
 if [[ "$restart_necessaire" == "oui" ]]; then
   restart="non"
   ### Création du script de reboot du serveur
