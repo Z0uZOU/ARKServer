@@ -730,8 +730,9 @@ rm $dossier_config/availablebuild.log
 maj_serveur="non"
 if [ -n "$nom_serveur" ] && [ -n "$chemin_serveur" ]; then
   currentbuild=`grep buildid "$chemin_serveur/serverfiles/steamapps/appmanifest_376030.acf" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d\  -f3`
-  compare=`testvercomp $currentbuild $availablebuild '<' | grep Pass`
-  if [[ "$compare" != "" ]] ; then
+#  compare=`testvercomp $currentbuild $availablebuild '<' | grep Pass`
+#  if [[ "$compare" != "" ]] ; then
+  if [[ "$currentbuild" -lt "$availablebuild" ]]; then
     eval 'echo -e "[\e[42m\u2713 \e[0m] Une mise à jour du serveur $nom_serveur est disponible:"' $mon_log_perso
     eval 'echo -e " ... Build actuelle: $RED$currentbuild$NORMAL"' $mon_log_perso
     eval 'echo -e " ... Build disponible: $GREEN$availablebuild$NORMAL"' $mon_log_perso
