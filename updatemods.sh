@@ -276,7 +276,7 @@ fi
 #### Vérification de version pour éventuelle mise à jour
 distant_md5=`curl -s "$script_github" | md5sum | cut -f1 -d" "`
 local_md5=`md5sum "$0" 2>/dev/null | cut -f1 -d" "`
-if [[ $distant_md5 != $local_md5 ]] && [[ "$no_update" == "non" ]]; then
+if [[ $distant_md5 != $local_md5 ]]; then
   eval 'echo -e "$mui_update_available"' $mon_log_perso
   if [[ "$no_update" == "non" ]]; then
     eval 'echo -e "$mui_update_download"' $mon_log_perso
@@ -296,7 +296,7 @@ if [[ $distant_md5 != $local_md5 ]] && [[ "$no_update" == "non" ]]; then
     bash $mon_script_updater
     exit 1
   else
-    eval 'echo -e "$mui_update_download"' $mon_log_perso
+    eval 'echo -e "$mui_update_not_downloaded"' $mon_log_perso
     source $mon_script_langue
     my_title_count=`echo -n "$mui_title" | sed "s/\\\e\[[0-9]\{1,2\}m//g" | wc -c`
     line_lengh="78"
