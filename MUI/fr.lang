@@ -83,16 +83,6 @@ mui_created_menu_entry="... menu créé"
 mui_creating_menu_folder="... création du dossier du menu"
 mui_end_of_script=" -- FIN DE SCRIPT: $end_of_script -- "
 
-## Spécifique à ce script
-mui_section_configuration="VERIFICATION DE LA CONFIGURATION"
-mui_section_chmod="CHMOD ET CONTROLE DES DOSSIERS"
-mui_section_filebot="VERIFICATION DE FILEBOT"
-mui_section_doublons="RECHERCHE DE DOUBLONS"
-mui_section_nettoyage="NETTOYAGE DES DOSSIERS"
-mui_section_dossiers_vides="RECHERCHE DE DOSSIERS VIDES"
-mui_section_plex="VERIFICATION DE PLEX"
-mui_section_dossiers_log_vides="RECHERCHE DE DOSSIERS LOG VIDES"
-
 mui_lock_removed="Fichier lock effacé."
 mui_lock_status_on="Système de lock activé."
 mui_lock_status_off="Système de lock désactivé."
@@ -101,3 +91,8 @@ mui_purge_log_question="Êtes-vous sûr de vouloir effacer l'intégralité des l
 mui_purge_log_answer_yes="oui"
 mui_purge_log_done="Les logs ont été effacés."
 mui_purge_log_ko="Une erreur est survenue, veuillez contacter le développeur."
+
+## Spécifique à ce script
+mui_section_mods_download="TÉLÉCHARGEMENTS DES MODS"
+mui_section_server_infos="INFORMATIONS SERVEUR"
+mui_section_server_reboot="REDÉMARRAGE DU SERVEUR"
