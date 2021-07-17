@@ -6,7 +6,7 @@
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && shc -f updatemods.sh -o updatemods.bin && chmod +x updatemods.bin && rm -f *.x.c && rm -f updatemods.sh
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && chmod +x updatemods.sh
 ## Micro-config
-version="Version: 0.0.0.79" #base du système de mise à jour
+version="Version: 0.0.0.80" #base du système de mise à jour
 description="Téléchargeur de Mods pour ARK: Survival Evolved" #description pour le menu
 script_github="https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh" #emplacement du script original
 changelog_github="https://pastebin.com/raw/vJpabVtT" #emplacement du changelog de ce script
@@ -414,6 +414,7 @@ script_url=""
  
 #### Informations
 nom_serveur="ARK: Survival Evolved"
+chemin_serveur=""
  
 #### Version des mods à installer : Windows ou Linux
 mod_branch="Windows"
@@ -627,7 +628,30 @@ rconport_serveurs=()
 players_serveurs=()
 ip_locale=`hostname -I | cut -d' ' -f1`
 
-updatedb &
+if [[ "$chemin_serveur" == "" ]]; then
+  updatedb &
+  pid=$!
+  spin='-\|/'
+  i=0
+  while kill -0 $pid 2>/dev/null
+  do
+    i=$(( (i+1) %4 ))
+    printf "\r[  ] Détection du nombre de joueurs connectés au serveur ... ${spin:$i:1}"
+    sleep .1
+  done
+  printf "$mon_printf" && printf "\r"
+
+#### recherche du chemin et de la liste des serveurs
+  printf "\r[  ] Détection du nombre de joueurs connectés au serveur ..."
+  chemin_serveur=`locate \/arkserver | sed '/\/usb_save\//d' |  sed '/\/SAUVEGARDE\//d' | sed '/\/lgsm\//d' | sed '/\/log\//d' | sed '/\/.config\/argos\//d' | grep "\/arkserver$" | xargs dirname`
+  chemin_serveur_line=$(sed -n '/^chemin_serveur=/=' $mon_script_config)
+  if [[ "$chemin_serveur_line" != "" ]]; then
+    sed -i 's|chemin_serveur=.*|chemin_serveur="'$chemin_serveur'"|' $mon_script_config
+  else
+    echo -e "\nchemin_serveur=$chemin_serveur" >> $mon_script_config
+  fi
+fi
+updatedb -U $chemin_serveur --output $dossier_config/mlocate.db &
 pid=$!
 spin='-\|/'
 i=0
@@ -639,10 +663,7 @@ do
 done
 printf "$mon_printf" && printf "\r"
 
-#### recherche du chemin et de la liste des serveurs
-printf "\r[  ] Détection du nombre de joueurs connectés au serveur ..."
-chemin_serveur=`locate \/arkserver | sed '/\/usb_save\//d' |  sed '/\/SAUVEGARDE\//d' | sed '/\/lgsm\//d' | sed '/\/log\//d' | sed '/\/.config\/argos\//d' | grep "\/arkserver$" | xargs dirname`
-liste_serveurs=`locate \/arkserver | grep "$chemin_serveur" | sed '/\/usb_save\//d' |  sed '/\/SAUVEGARDE\//d' | sed '/\/lgsm\//d' | sed '/\/log\//d' | sed "s|$chemin_serveur\/||g"`
+liste_serveurs=`locate -d $dossier_config/mlocate.db \/arkserver | grep "$chemin_serveur" | sed '/\/usb_save\//d' |  sed '/\/SAUVEGARDE\//d' | sed '/\/lgsm\//d' | sed '/\/log\//d' | sed "s|$chemin_serveur\/||g"`
 arkserver_GameUserSettings=`echo $chemin_serveur"/serverfiles/ShooterGame/Saved/Config/LinuxServer/GameUserSettings.ini"`
 server_admin_password=`cat "$arkserver_GameUserSettings" | grep '^ServerAdminPassword=' | sed 's/ServerAdminPassword=//g'`
 
@@ -651,14 +672,15 @@ players_total_serveur=0
 for sh_actuel in $liste_serveurs ; do
   sh_serveurs+=("$sh_actuel")
   if [[ -f "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" ]]; then
-  	map_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep '^defaultmap=' | sed 's/defaultmap=\"//g' | sed 's/\"//g'`)
+    map_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep '^defaultmap=' | sed 's/defaultmap=\"//g' | sed 's/\"//g'`)
     serveur_name=`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep 'SessionName=' | sed 's/.*SessionName=//g' | sed 's/?.*//g' | sed 's/\\\"//g'`
     sessionname_serveurs+=("$serveur_name")
     port_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep '^port=' | sed 's/port=\"//g' | sed 's/\"//g'`)
     queryport_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep '^queryport=' | sed -e 's/queryport=\"//g' | sed 's/\"//g'`)
     rconport_serveurs+=(`cat "$chemin_serveur/lgsm/config-lgsm/arkserver/$sh_actuel.cfg" | grep '^rconport=' | sed 's/rconport=\"//g' | sed 's/\"//g'`)
-    process_arkserver=`ps aux | sed '/tmux/d' | grep "./ShooterGameServer -i \(/Game/Mods/.*/${map_serveurs[$numero_serveur]}\|${map_serveurs[$numero_serveur]}\)" | grep "?Port=${port_serveurs[$numero_serveur]}?" | sed '/grep/d' | awk '{print $2}'`
-	  if [[ "$process_arkserver" != "" ]]; then
+    process_arkserver=`ps aux | sed '/tmux/d' | grep -i "./ShooterGameServer -i \(/Game/Mods/.*/${map_serveurs[$numero_serveur]}\|${map_serveurs[$numero_serveur]}\)" | grep "?Port=${port_serveurs[$numero_serveur]}?" | sed '/grep/d' | awk '{print $2}'`
+    if [[ "$process_arkserver" != "" ]]; then
+      echo -e "Serveur lancé : " ${map_serveurs[$numero_serveur]}
       $dossier_config/rcon -P$server_admin_password -a$ip_locale -p${rconport_serveurs[$numero_serveur]} listplayers > $dossier_config/rcon_$numero_serveur.txt
       players_connected=`cat $dossier_config/rcon_$numero_serveur.txt | grep 'No Players Connected'`
       if [[ "$players_connected" == "" ]]; then
@@ -1101,11 +1123,11 @@ if [[ "$restart_necessaire" == "oui" ]]; then
   chown $user_arkserver:$user_arkserver -R "$chemin_serveur"
   numero_serveur=0
   while [[ $numero_serveur != $nombre_serveur ]]; do  
-    process_arkserver=`ps aux | sed '/tmux/d' | grep "./ShooterGameServer -i \(/Game/Mods/.*/${map_serveurs[$numero_serveur]}\|${map_serveurs[$numero_serveur]}\)" | grep "?Port=${port_serveurs[$numero_serveur]}?" | sed '/grep/d' | awk '{print $2}'`
+    process_arkserver=`ps aux | sed '/tmux/d' | grep -i "./ShooterGameServer \(/Game/Mods/.*/${map_serveurs[$numero_serveur]}\|${map_serveurs[$numero_serveur]}\)" | grep "?Port=${port_serveurs[$numero_serveur]}?" | sed '/grep/d' | awk '{print $2}'`
     if [[ "$process_arkserver" != "" ]]; then
       echo "#!/bin/bash" > /opt/scripts/ark-restart.sh
-      echo "mon_printf=\"\\r                                                                                           \"" >> /opt/scripts/ark-restart.sh
-      echo "bash $script_discord \":construction: Redémarrage du serveur ${sessionname_serveurs[$numero_serveur]} :construction:\"" >> /opt/scripts/ark-restart.sh
+      echo "mon_printf=\"\\r                                                                                                                \"" >> /opt/scripts/ark-restart.sh
+      echo "bash $script_discord \":construction: Redémarrage du serveur ${sessionname_serveurs[$numero_serveur]} (${map_serveurs[$numero_serveur]}) :construction:\"" >> /opt/scripts/ark-restart.sh
       echo "bash \"$chemin_serveur/${sh_serveurs[$numero_serveur]}\" restart > /opt/scripts/ark-restart.log &" >> /opt/scripts/ark-restart.sh
       echo "pid=\$!" >> /opt/scripts/ark-restart.sh
       echo "spin='-\|/'" >> /opt/scripts/ark-restart.sh
@@ -1113,12 +1135,12 @@ if [[ "$restart_necessaire" == "oui" ]]; then
       echo "while kill -0 \$pid 2>/dev/null" >> /opt/scripts/ark-restart.sh
       echo "do" >> /opt/scripts/ark-restart.sh
       echo "  i=\$(( (i+1) %4 ))" >> /opt/scripts/ark-restart.sh
-      echo "  printf \"\\r[  ] Redémarrage du serveur ${sessionname_serveurs[$numero_serveur]} ... \${spin:\$i:1}\"" >> /opt/scripts/ark-restart.sh
+      echo "  printf \"\\r[  ] Redémarrage du serveur ${sessionname_serveurs[$numero_serveur]} (${map_serveurs[$numero_serveur]}) ... \${spin:\$i:1}\"" >> /opt/scripts/ark-restart.sh
       echo "  sleep .1" >> /opt/scripts/ark-restart.sh
       echo "done" >> /opt/scripts/ark-restart.sh
       echo "printf \"\$mon_printf\" && printf \"\\r\"" >> /opt/scripts/ark-restart.sh
-      echo "echo -e \"\\r[\\e[42m\\u2713 \e[0m] Redémarrage du serveur ${sessionname_serveurs[$numero_serveur]}\"" >> /opt/scripts/ark-restart.sh
-      echo "bash $script_discord \":construction: Le serveur ${sessionname_serveurs[$numero_serveur]} est redémarré, veuillez patienter quelques instants :construction:\"" >> /opt/scripts/ark-restart.sh
+      echo "echo -e \"\\r[\\e[42m\\u2713 \e[0m] Redémarrage du serveur ${sessionname_serveurs[$numero_serveur]} (${map_serveurs[$numero_serveur]}) \"" >> /opt/scripts/ark-restart.sh
+      echo "bash $script_discord \":construction: Le serveur ${sessionname_serveurs[$numero_serveur]} (${map_serveurs[$numero_serveur]}) est redémarré, veuillez patienter quelques instants :construction:\"" >> /opt/scripts/ark-restart.sh
       chmod +x /opt/scripts/ark-restart.sh
 su $user_arkserver <<'EOF'
 bash /opt/scripts/ark-restart.sh
