@@ -6,7 +6,7 @@
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && shc -f updatemods.sh -o updatemods.bin && chmod +x updatemods.bin && rm -f *.x.c && rm -f updatemods.sh
 ## Installation: wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh -O updatemods.sh && sed -i -e 's/\r//g' updatemods.sh && chmod +x updatemods.sh
 ## Micro-config
-version="Version: 0.0.0.80" #base du système de mise à jour
+version="Version: 0.0.0.81" #base du système de mise à jour
 description="Téléchargeur de Mods pour ARK: Survival Evolved" #description pour le menu
 script_github="https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/updatemods.sh" #emplacement du script original
 changelog_github="https://pastebin.com/raw/vJpabVtT" #emplacement du changelog de ce script
@@ -17,129 +17,183 @@ required_tools_pip="" #dépendances du script (PIP)
 script_cron="0 * * * *" #ne définir que la planification
 verification_process="" #si ces process sont détectés on ne notifie pas (ou ne lance pas en doublon)
 ########################
- 
-#### Vérification que le script possède les droits root
-## NE PAS TOUCHER
-if [[ "$EUID" != "0" ]]; then
-  if [[ "$CRON_SCRIPT" == "oui" ]]; then
-    exit 1
-  else
-    echo "Vous devrez impérativement utiliser le compte root"
-    exit 1
-  fi
-fi
- 
-#### Vérification de process pour éviter les doublons (commandes externes)
-for process_travail in $verification_process ; do
-  process_important=`ps aux | grep $process_travail | sed '/grep/d'`
-  if [[ "$process_important" != "" ]] ; then
-    if [[ "$CRON_SCRIPT" != "oui" ]] ; then
-      echo $process_important" est en cours de fonctionnement, arrêt du script"
-      fin_script=`date`
-      echo -e "\e[43m-- FIN DE SCRIPT: $fin_script --\e[0m"
-    fi
-    exit 1
-  fi
-done
- 
-#### Déduction des noms des fichiers (pour un portage facile)
-mon_script_fichier=`basename "$0"`
-mon_script_base=`echo ''$mon_script_fichier | cut -f1 -d'.'''`
-mon_script_base_maj=`echo ${mon_script_base^^}`
-mon_script_config=`echo "/root/.config/"$mon_script_base"/"$mon_script_base".conf"`
-mon_script_ini=`echo "/root/.config/"$mon_script_base"/"$mon_script_base".ini"`
-mon_script_log=`echo $mon_script_base".log"`
-mon_script_desktop=`echo $mon_script_base".desktop"`
-mon_script_updater=`echo $mon_script_base"-update.sh"`
- 
+
 #### Initialisation des variables
 debug="non"
 force_dl="non"
 force_update="non"
 force_copy="non"
- 
-#### Tests des arguments
-for parametre in $@; do
-  if [[ "$parametre" == "--version" ]]; then
-    echo "$version"
+no_update="non"
+
+
+#### Vérification de la langue du system
+if [[ "$@" =~ "--langue=" ]]; then
+  affichage_langue=`echo "$@" | sed 's/.*--langue=//' | sed 's/ .*//' | tr '[:upper:]' '[:lower:]'`
+else
+  affichage_langue=$(locale | grep LANG | sed -n '1p' | cut -d= -f2 | cut -d_ -f1)
+fi
+verif_langue=`curl -s "https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/MUI/$affichage_langue.lang"`
+if [[ "$verif_langue" == "404: Not Found" ]]; then
+  affichage_langue="en"
+fi
+
+
+#### Déduction des noms des fichiers (pour un portage facile)
+mon_script_fichier=`basename "$0"`
+mon_script_base=`echo ''$mon_script_fichier | cut -f1 -d'.'''`
+mon_script_base_maj=`echo ${mon_script_base^^}`
+mon_dossier_config=`echo "/root/.config/"$mon_script_base`
+mon_script_config=`echo $mon_dossier_config"/"$mon_script_base".conf"`
+mon_script_langue=`echo $mon_dossier_config"/MUI/"$affichage_langue".lang"`
+mon_script_desktop=`echo $mon_script_base".desktop"`
+mon_script_updater=`echo $mon_script_base"-update.sh"`
+mon_script_pid=`echo $mon_dossier_config"/lock-"$mon_script_base`
+mon_path_log=`echo $mon_dossier_config"/log"`
+date_log=`date +%Y%m%d`
+heure_log=`date +%H%M`
+mon_fichier_log=`echo $mon_path_log"/"$date_log"/"$heure_log".log"`
+
+
+#### Vérification que le script possède les droits root
+## NE PAS TOUCHER
+if [ "$(whoami)" != "root" ]; then
+  if [[ "$CRON_SCRIPT" == "oui" ]]; then
+    exit 1
+  else
+    source <(curl -s https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/MUI/$affichage_langue.lang)
+    echo "$mui_root_check"
     exit 1
   fi
+fi
+
+
+#### Chargement du fichier pour la langue (ou installation)
+if [[ -f "$mon_script_langue" ]]; then
+  distant_md5=`curl -s "https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/MUI/$affichage_langue.lang" | md5sum | cut -f1 -d" "`
+  local_md5=`md5sum "$mon_script_langue" 2>/dev/null | cut -f1 -d" "`
+  if [[ $distant_md5 != $local_md5 ]]; then
+    wget --quiet "https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/MUI/$affichage_langue.lang" -O "$mon_script_langue"
+    chmod +x "$mon_script_langue"
+  fi
+else
+  wget --quiet "https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/MUI/$affichage_langue.lang" -O "$mon_script_langue"
+  chmod +x "$mon_script_langue"
+fi
+source $mon_script_langue
+
+
+#### Fonction pour envoyer des push
+push-message() {
+  push_title=$1
+  push_content=$2
+  push_priority=$3
+  for user in {1..10}; do
+    destinataire=`eval echo "\\$destinataire_"$user`
+    if [ -n "$destinataire" ]; then
+      curl -s \
+        --form-string "token=$token_app" \
+        --form-string "user=$destinataire" \
+        --form-string "title=$push_title" \
+        --form-string "message=$push_content" \
+        --form-string "html=1" \
+        --form-string "priority=$push_priority" \
+        https://api.pushover.net/1/messages.json > /dev/null
+    fi
+  done
+}
+
+
+#### Vérification de process pour éviter les doublons (commandes externes)
+for process_travail in $verification_process ; do
+  process_important=`ps aux | grep $process_travail | sed '/grep/d'`
+  if [[ "$process_important" != "" ]] ; then
+    if [[ "$CRON_SCRIPT" != "oui" ]] ; then
+      echo "$process_travail $mui_prevent_dupe_task"
+      end_of_script=`date`
+      source $mon_script_langue
+      my_title_count=`echo -n "$mui_end_of_script" | sed "s/\\\e\[[0-9]\{1,2\}m//g" | sed 's/é/e/g' | wc -c`
+      line_lengh="78"
+      before_count=$((($line_lengh-$my_title_count)/2))
+      after_count=$(((($line_lengh-$my_title_count)%2)+$before_count))
+      before=`eval printf "%0.s-" {1..$before_count}`
+      after=`eval printf "%0.s-" {1..$after_count}`
+      printf "\e[43m%s%s%s\e[0m\n" "$before" "$mui_end_of_script" "$after"
+    fi
+    exit 1
+  fi
+done
+
+
+#### Tests des arguments
+for parametre in $@; do
   if [[ "$parametre" == "--debug" ]]; then
-    debug="oui"
+    debug="yes"
   fi
   if [[ "$parametre" == "--edit-config" ]]; then
     nano $mon_script_config
     exit 1
   fi
   if [[ "$parametre" == "--efface-lock" ]]; then
-    mon_lock=`echo "/root/.config/"$mon_script_base"/lock-"$mon_script_base`
+    mon_lock=`echo $mon_dossier_config"/lock-"$mon_script_base`
     rm -f "$mon_lock"
-    echo "Fichier lock effacé"
+    echo -e "$mui_lock_removed"
     exit 1
   fi
   if [[ "$parametre" == "--statut-lock" ]]; then
     statut_lock=`cat $mon_script_config | grep "maj_force=\"oui\""`
     if [[ "$statut_lock" == "" ]]; then
-      echo "Système de lock activé"
+      echo -e "$mui_lock_status_on"
     else
-      echo "Système de lock désactivé"
+      echo -e "$mui_lock_status_off"
     fi
     exit 1
   fi
   if [[ "$parametre" == "--active-lock" ]]; then
     sed -i 's/maj_force="oui"/maj_force="non"/g' $mon_script_config
-    echo "Système de lock activé"
+    echo -e "$mui_lock_status_on"
     exit 1
   fi
   if [[ "$parametre" == "--desactive-lock" ]]; then
     sed -i 's/maj_force="non"/maj_force="oui"/g' $mon_script_config
-    echo "Système de lock désactivé"
+    echo -e "$mui_lock_status_off"
     exit 1
   fi
   if [[ "$parametre" == "--extra-log" ]]; then
-    date_log=`date +%Y%m%d`
-    heure_log=`date +%H%M`
-    path_log=`echo "/root/.config/"$mon_script_base"/log/"$date_log`
-    mkdir -p $path_log 2>/dev/null
-    fichier_log_perso=`echo $path_log"/"$heure_log".log"`
-    mon_log_perso="| tee -a $fichier_log_perso"
+    mon_log_perso="| tee -a $mon_fichier_log"
   fi
   if [[ "$parametre" == "--purge-process" ]]; then
-    ps aux | grep $mon_script_base | awk '{print $2}' | xargs kill -9
-    echo "Les processus de ce script ont été tués"
+    pgrep -x "$mon_script_fichier" | xargs kill -9
+    echo -e "$mui_purge_process"
+    exit 1
   fi
   if [[ "$parametre" == "--purge-log" ]]; then
-    path_global_log=`echo "/root/.config/"$mon_script_base"/log"`
-    cd $path_global_log
+    cd $mon_path_log
     mon_chemin=`echo $PWD`
-    if [[ "$mon_chemin" == "$path_global_log" ]]; then
-      printf "Êtes-vous sûr de vouloir effacer l'intégralité des logs de --extra-log? (oui/non) : "
+    if [[ "$mon_chemin" == "$mon_path_log" ]]; then
+      printf "$mui_purge_log_question : "
       read question_effacement
-      if [[ "$question_effacement" == "oui" ]]; then
+      reponse_effacement=`echo $question_effacement | tr '[:upper:]' '[:lower:]'`
+      if [[ "$reponse_effacement" == "$mui_purge_log_answer_yes" ]]; then
         rm -rf *
-        echo "Les logs ont été effacés"
+        echo -e "$mui_purge_log_done"
       fi
     else
-      echo "Une erreur est survenue, veuillez contacter le développeur"
+      echo -e "$mui_purge_log_ko"
     fi
     exit 1
   fi
-  if [[ "$parametre" == "--changelog" ]]; then
-    wget -q -O- $changelog_github
-    echo ""
-    exit 1
-  fi
-  if [[ "$parametre" == --message=* ]]; then
-    source $mon_script_config
-    message=`echo "$parametre" | sed 's/--message=//g'`
-    curl -s \
-      --form-string "token=acy83vqos6h76yzpp3mhrt6saf25b4" \
-      --form-string "user=uauyi2fdfiu24k7xuwiwk92ovimgto" \
-      --form-string "title=$mon_script_base_maj MESSAGE" \
-      --form-string "message=$message" \
-      --form-string "html=1" \
-      --form-string "priority=0" \
-      https://api.pushover.net/1/messages.json > /dev/null
+  if [[ "$parametre" == "--help" ]]; then
+    i=""
+    for i in _ {a..z} {A..Z}; do eval "echo \${!$i@}" ; done | xargs printf "%s\n" | grep mui_menu_help > variables
+    help_lignes=`wc -l variables | awk '{print $1}'`
+    rm -f variables
+    j=""
+    mui_menu_help="mui_menu_help_"
+    for j in $(seq 1 $help_lignes); do
+      source $mon_script_langue
+      mui_menu_help_display=`echo -e "$mui_menu_help$j"`
+      echo -e "${!mui_menu_help_display}"
+    done
     exit 1
   fi
   if [[ "$parametre" == "--force-dl" ]]; then
@@ -151,41 +205,12 @@ for parametre in $@; do
   if [[ "$parametre" == "--force-copy" ]]; then
     force_copy="oui"
   fi
-  if [[ "$parametre" == "--help" ]]; then
-    path_log=`echo "/root/.config/"$mon_script_base"/log/"$date_log`
-    echo -e "\e[1m$mon_script_base_maj\e[0m ($version)"
-    echo "Objectif du programme: $description"
-    echo "Auteur: ZouZOU <zouzou.is.reborn@hotmail.fr>"
-    echo ""
-    echo "Utilisation: \"$mon_script_fichier [--option]\""
-    echo ""
-    echo -e "\e[4mOptions:\e[0m"
-    echo "  --version               Affiche la version de ce programme"
-    echo "  --edit-config           Édite la configuration de ce programme"
-    echo "  --extra-log             Génère un log à chaque exécution dans "$path_log
-    echo "  --debug                 Lance ce programme en mode debug"
-    echo "  --efface-lock           Supprime le fichier lock qui empêche l'exécution"
-    echo "  --statut-lock           Affiche le statut de la vérification de process doublon"
-    echo "  --active-lock           Active le système de vérification de process doublon"
-    echo "  --desactive-lock        Désactive le système de vérification de process doublon"
-    echo "  --maj-uniquement        N'exécute que la mise à jour"
-    echo "  --changelog             Affiche le changelog de ce programme"
-    echo "  --help                  Affiche ce menu"
-    echo ""
-    echo "Les options \"--debug\" et \"--extra-log\" sont cumulables"
-    echo ""
-    echo -e "\e[4mUtilisation avancée:\e[0m"
-    echo "  --message=\"...\"         Envoie un message push au développeur (urgence uniquement)"
-    echo "  --purge-log             Purge définitivement les logs générés par --extra-log"
-    echo "  --purge-process         Tue tout les processus générés par ce programme"
-    echo ""
-    echo -e "\e[3m ATTENTION: CE PROGRAMME DOIT ÊTRE EXÉCUTÉ AVEC LES PRIVILÈGES ROOT \e[0m"
-    echo "Des commandes comme les installations de dépendances ou les recherches nécessitent de tels privilèges."
-    echo ""
-    exit 1
+  if [[ "$parametre" == "--no-update" ]]; then
+    no_update="oui"
   fi
 done
- 
+
+
 #### je dois charger le fichier conf ici ou trouver une solution (script_url et maj_force)
 dossier_config=`echo "/root/.config/"$mon_script_base`
 if [[ -d "$dossier_config" ]]; then
@@ -205,149 +230,101 @@ else
     fi
 fi
  
-#### Vérification qu'au reboot les lock soient bien supprimés
-## attention si pas de rc.local il faut virer les lock par cron (a faire)
-if [[ -f "/etc/rc.local" ]]; then
-  test_rc_local=`cat /etc/rc.local | grep -e 'find /root/.config -name "lock-\*" | xargs rm -f'`
-  if [[ "$test_rc_local" == "" ]]; then
-   sed -i -e '$i \find /root/.config -name "lock-*" | xargs rm -f\n' /etc/rc.local >/dev/null
-  fi
+#### Chargement du fichier conf si présent
+if [[ -f "$mon_script_config" ]] ; then
+  source $mon_script_config
 fi
- 
+
+
+#### Vérification qu'au reboot les lock soient bien supprimés
+test_crontab=`crontab -l | grep "clean-lock"`
+if [[ "$test_crontab" == "" ]]; then
+  crontab -l > $dossier_config/mon_cron.txt
+  sed -i '5i@reboot\t\t\tsleep 10 && /opt/scripts/clean-lock.sh' $dossier_config/mon_cron.txt
+  crontab $dossier_config/mon_cron.txt
+  rm -f $dossier_config/mon_cron.txt
+fi
+
+
 #### Vérification qu'une autre instance de ce script ne s'exécute pas
-computer_name=`hostname`
-pid_script=`echo "/root/.config/"$mon_script_base"/lock-"$mon_script_base`
 if [[ "$maj_force" == "non" ]] ; then
-  if [[ -f "$pid_script" ]] ; then
-    echo "Il y a au moins un autre process du script en cours"
-    message_alerte=`echo -e "Un process bloque mon script sur $computer_name"`
-    ## petite notif pour ZouZOU
-    curl -s \
-    --form-string "token=arocr9cyb3x5fdo7i4zy7e99da6hmx" \
-    --form-string "user=uauyi2fdfiu24k7xuwiwk92ovimgto" \
-    --form-string "title=$mon_script_base_maj HS" \
-    --form-string "message=$message_alerte" \
-    --form-string "html=1" \
-    --form-string "priority=1" \
-    https://api.pushover.net/1/messages.json > /dev/null
+  if [[ -f "$mon_script_pid" ]] ; then
+    computer_name=`hostname`
+    source $mon_script_langue
+    echo "$mui_pid_check"
+    push-message "$mui_pid_check_title" "$mui_pid_check" "1"
     exit 1
   fi
 fi
-touch $pid_script
- 
+touch $mon_script_pid
+
+
 #### Chemin du script
 ## necessaire pour le mettre dans le cron
 cd /opt/scripts
- 
+
 #### Indispensable aux messages de chargement
-mon_printf="\r                                                                                           "
- 
+mon_printf="\r                                                                                                                                "
+
 #### Nettoyage obligatoire et push pour annoncer la maj
 if [[ -f "$mon_script_updater" ]] ; then
   rm "$mon_script_updater"
-  source $mon_script_config 2>/dev/null
-  version_maj=`echo $version | awk '{print $2}'`
-  message_maj=`echo -e "Le progamme $mon_script_base est désormais en version $version_maj sur $computer_name"`
-  for user in {1..10}; do
-    destinataire=`eval echo "\\$destinataire_"$user`
-    if [ -n "$destinataire" ]; then
-      curl -s \
-      --form-string "token=$token_app" \
-      --form-string "user=$destinataire" \
-      --form-string "title=Mise à jour installée" \
-      --form-string "message=$message_maj" \
-      --form-string "html=1" \
-      --form-string "priority=-1" \
-      https://api.pushover.net/1/messages.json > /dev/null
-    fi
-  done
+  push-message "$mui_pushover_updated_title" "$mui_pushover_updated_msg" "1"
 fi
- 
+
+
 #### Vérification de version pour éventuelle mise à jour
-version_distante=`wget -O- -q "$script_github" | grep "Version:" | awk '{ print $2 }' | sed -n 1p | awk '{print $1}' | sed 's/\r//g' | sed 's/"//g'`
-version_locale=`echo $version | awk '{print $2}'`
- 
-vercomp () {
-    if [[ $1 == $2 ]]
-    then
-        return 0
-    fi
-    local IFS=.
-    local i ver1=($1) ver2=($2)
-    for ((i=${#ver1[@]}; i<${#ver2[@]}; i++))
-    do
-        ver1[i]=0
-    done
-    for ((i=0; i<${#ver1[@]}; i++))
-    do
-        if [[ -z ${ver2[i]} ]]
-        then
-            ver2[i]=0
-        fi
-        if ((10#${ver1[i]} > 10#${ver2[i]}))
-        then
-            return 1
-        fi
-        if ((10#${ver1[i]} < 10#${ver2[i]}))
-        then
-            return 2
-        fi
-    done
-    return 0
-}
-testvercomp () {
-    vercomp $1 $2
-    case $? in
-        0) op='=';;
-        1) op='>';;
-        2) op='<';;
-    esac
-    if [[ $op != $3 ]]
-    then
-        echo "FAIL: Expected '$3', Actual '$op', Arg1 '$1', Arg2 '$2'"
-    else
-        echo "Pass: '$1 $op $2'"
-    fi
-}
-compare=`testvercomp $version_locale $version_distante '<' | grep Pass`
-if [[ "$compare" != "" ]] ; then
-  echo "une mise à jour est disponible ($version_distante) - version actuelle: $version_locale"
-  echo "téléchargement de la mise à jour et installation..."
-  touch $mon_script_updater
-  chmod +x $mon_script_updater
-  echo "#!/bin/bash" >> $mon_script_updater
-  mon_script_fichier_temp=`echo $mon_script_fichier"-temp"`
-  echo "wget -q $script_github -O $mon_script_fichier_temp" >> $mon_script_updater
-  echo "sed -i -e 's/\r//g' $mon_script_fichier_temp" >> $mon_script_updater
-  if [[ "$mon_script_fichier" =~ \.sh$ ]]; then
+distant_md5=`curl -s "$script_github" | md5sum | cut -f1 -d" "`
+local_md5=`md5sum "$0" 2>/dev/null | cut -f1 -d" "`
+if [[ $distant_md5 != $local_md5 ]] && [[ "$no_update" == "non" ]]; then
+  eval 'echo -e "$mui_update_available"' $mon_log_perso
+  if [[ "$no_update" == "non" ]]; then
+    eval 'echo -e "$mui_update_download"' $mon_log_perso
+    touch $mon_script_updater
+    chmod +x $mon_script_updater
+    echo "#!/bin/bash" >> $mon_script_updater
+    mon_script_fichier_temp=`echo $mon_script_fichier"-temp"`
+    echo "wget -q $script_github -O $mon_script_fichier_temp" >> $mon_script_updater
+    echo "sed -i -e 's/\r//g' $mon_script_fichier_temp" >> $mon_script_updater
     echo "mv $mon_script_fichier_temp $mon_script_fichier" >> $mon_script_updater
     echo "chmod +x $mon_script_fichier" >> $mon_script_updater
     echo "chmod 777 $mon_script_fichier" >> $mon_script_updater
-    echo "bash $mon_script_fichier $1 $2" >> $mon_script_updater
+    echo "$mui_update_done" >> $mon_script_updater
+    echo "bash $mon_script_fichier $@" >> $mon_script_updater
+    echo "exit 1" >> $mon_script_updater
+    rm "$mon_script_pid"
+    bash $mon_script_updater
+    exit 1
   else
-    echo "shc -f $mon_script_fichier_temp -o $mon_script_fichier" >> $mon_script_updater
-    echo "rm -f $mon_script_fichier_temp" >> $mon_script_updater
-    compilateur=`echo $mon_script_fichier".x.c"`
-    echo "rm -f *.x.c" >> $mon_script_updater
-    echo "chmod +x $mon_script_fichier" >> $mon_script_updater
-    echo "chmod 777 $mon_script_fichier" >> $mon_script_updater
-    echo "echo mise à jour mise en place" >> $mon_script_updater
-    echo "./$mon_script_fichier $1 $2" >> $mon_script_updater
+    eval 'echo -e "$mui_update_download"' $mon_log_perso
+    source $mon_script_langue
+    my_title_count=`echo -n "$mui_title" | sed "s/\\\e\[[0-9]\{1,2\}m//g" | wc -c`
+    line_lengh="78"
+    before_count=$((($line_lengh-$my_title_count)/2))
+    after_count=$(((($line_lengh-$my_title_count)%2)+$before_count))
+    before=`eval printf "%0.s-" {1..$before_count}`
+    after=`eval printf "%0.s-" {1..$after_count}`
+    eval 'printf "\e[43m%s%s%s\e[0m\n" "$before" "$mui_title" "$after"' $mon_log_perso
   fi
-  echo "exit 1" >> $mon_script_updater
-  rm "$pid_script"
-  bash $mon_script_updater
-  exit 1
 else
-  eval 'echo -e "\e[43m-- $mon_script_base_maj - VERSION: $version_locale --\e[0m"' $mon_log_perso
+  source $mon_script_langue
+  my_title_count=`echo -n "$mui_title" | sed "s/\\\e\[[0-9]\{1,2\}m//g" | wc -c`
+  line_lengh="78"
+  before_count=$((($line_lengh-$my_title_count)/2))
+  after_count=$(((($line_lengh-$my_title_count)%2)+$before_count))
+  before=`eval printf "%0.s-" {1..$before_count}`
+  after=`eval printf "%0.s-" {1..$after_count}`
+  eval 'printf "\e[43m%s%s%s\e[0m\n" "$before" "$mui_title" "$after"' $mon_log_perso
 fi
- 
-#### Nécessaire pour l'argument --maj-uniquement
-if [[ "$1" == "--maj-uniquement" ]]; then
-  rm "$pid_script"
+
+
+#### Nécessaire pour l'argument --update
+if [[ "$@" == "--update" ]]; then
+  rm "$mon_script_pid"
   exit 1
 fi
- 
+
+
 #### Vérification de la conformité du cron
 crontab -l > mon_cron.txt
 cron_path=`cat mon_cron.txt | grep "PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin"`
@@ -1212,6 +1189,20 @@ else
   eval 'echo -e "\r[\e[42m\u2713 \e[0m] Pas de nécessité de redémarrer le serveur"' $mon_log_perso
 fi
 
-rm "$pid_script"
-fin_script=`date`
-eval 'echo -e "\e[43m-- FIN DE SCRIPT: $fin_script --\e[0m"' $mon_log_perso
+end_of_script=`date`
+source $mon_script_langue
+my_title_count=`echo -n "$mui_end_of_script" | sed "s/\\\e\[[0-9]\{1,2\}m//g" | sed 's/é/e/g' | wc -c`
+line_lengh="78"
+before_count=$((($line_lengh-$my_title_count)/2))
+after_count=$(((($line_lengh-$my_title_count)%2)+$before_count))
+before=`eval printf "%0.s-" {1..$before_count}`
+after=`eval printf "%0.s-" {1..$after_count}`
+eval 'printf "\e[43m%s%s%s\e[0m\n" "$before" "$mui_end_of_script" "$after"' $mon_log_perso
+if [[ "$maj_necessaire" == "1" ]] && [[ -f "$fichier_log_perso" ]]; then
+  cp $fichier_log_perso /var/log/$mon_script_base-last.log
+fi
+rm "$mon_script_pid"
+
+if [[ "$1" == "--menu" ]]; then
+  read -rsp $'Press a key to close the window...\n' -n1 key
+fi
