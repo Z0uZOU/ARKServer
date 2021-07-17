@@ -297,25 +297,16 @@ if [[ $distant_md5 != $local_md5 ]]; then
     exit 1
   else
     eval 'echo -e "$mui_update_not_downloaded"' $mon_log_perso
-    source $mon_script_langue
-    my_title_count=`echo -n "$mui_title" | sed "s/\\\e\[[0-9]\{1,2\}m//g" | wc -c`
-    line_lengh="78"
-    before_count=$((($line_lengh-$my_title_count)/2))
-    after_count=$(((($line_lengh-$my_title_count)%2)+$before_count))
-    before=`eval printf "%0.s-" {1..$before_count}`
-    after=`eval printf "%0.s-" {1..$after_count}`
-    eval 'printf "\e[43m%s%s%s\e[0m\n" "$before" "$mui_title" "$after"' $mon_log_perso
   fi
-else
-  source $mon_script_langue
-  my_title_count=`echo -n "$mui_title" | sed "s/\\\e\[[0-9]\{1,2\}m//g" | wc -c`
-  line_lengh="78"
-  before_count=$((($line_lengh-$my_title_count)/2))
-  after_count=$(((($line_lengh-$my_title_count)%2)+$before_count))
-  before=`eval printf "%0.s-" {1..$before_count}`
-  after=`eval printf "%0.s-" {1..$after_count}`
-  eval 'printf "\e[43m%s%s%s\e[0m\n" "$before" "$mui_title" "$after"' $mon_log_perso
 fi
+source $mon_script_langue
+my_title_count=`echo -n "$mui_title" | sed "s/\\\e\[[0-9]\{1,2\}m//g" | wc -c`
+line_lengh="78"
+before_count=$((($line_lengh-$my_title_count)/2))
+after_count=$(((($line_lengh-$my_title_count)%2)+$before_count))
+before=`eval printf "%0.s-" {1..$before_count}`
+after=`eval printf "%0.s-" {1..$after_count}`
+eval 'printf "\e[43m%s%s%s\e[0m\n" "$before" "$mui_title" "$after"' $mon_log_perso
 
 
 #### Nécessaire pour l'argument --update
@@ -326,28 +317,28 @@ fi
 
 
 #### Vérification de la conformité du cron
-crontab -l > mon_cron.txt
-cron_path=`cat mon_cron.txt | grep "PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin"`
+crontab -l > $dossier_config/mon_cron.txt
+cron_path=`cat $dossier_config/mon_cron.txt | grep "PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin"`
 if [[ "$cron_path" == "" ]]; then
-  sed -i '1iPATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin' mon_cron.txt
+  sed -i '1iPATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin' $dossier_config/mon_cron.txt
   cron_a_appliquer="oui"
 fi
-cron_lang=`cat mon_cron.txt | grep "LANG=fr_FR.UTF-8"`
+cron_lang=`cat $dossier_config/mon_cron.txt | grep "LANG=fr_FR.UTF-8"`
 if [[ "$cron_lang" == "" ]]; then
-  sed -i '1iLANG=fr_FR.UTF-8' mon_cron.txt
+  sed -i '1iLANG=fr_FR.UTF-8' $dossier_config/mon_cron.txt
   cron_a_appliquer="oui"
 fi
-cron_variable=`cat mon_cron.txt | grep "CRON_SCRIPT=\"oui\""`
+cron_variable=`cat $dossier_config/mon_cron.txt | grep "CRON_SCRIPT=\"oui\""`
 if [[ "$cron_variable" == "" ]]; then
-  sed -i '1iCRON_SCRIPT="oui"' mon_cron.txt
+  sed -i '1iCRON_SCRIPT="oui"' $dossier_config/mon_cron.txt
   cron_a_appliquer="oui"
 fi
 if [[ "$cron_a_appliquer" == "oui" ]]; then
-  crontab mon_cron.txt
-  rm -f mon_cron.txt
-  eval 'echo "-- Cron mis en conformité"' $mon_log_perso
+  crontab $dossier_config/mon_cron.txt
+  rm -f $dossier_config/mon_cron.txt
+  eval 'echo -e "$mui_cron_path_updated"' $mon_log_perso
 else
-  rm -f mon_cron.txt
+  rm -f $dossier_config/mon_cron.txt
 fi
  
 #### Mise en place éventuelle d'un cron
@@ -359,10 +350,10 @@ if [[ "$script_cron" != "" ]]; then
     eval 'echo "-- Création..."' $mon_log_perso
     ajout_cron=`echo -e "$script_cron\t\t/opt/scripts/$mon_script_fichier > /var/log/$mon_script_log 2>&1"`
     eval 'echo "-- Mise en place dans le cron..."' $mon_log_perso
-    crontab -l > mon_cron.txt
-    echo -e "$ajout_cron" >> mon_cron.txt
-    crontab mon_cron.txt
-    rm -f mon_cron.txt
+    crontab -l > $dossier_config/mon_cron.txt
+    echo -e "$ajout_cron" >> $dossier_config/mon_cron.txt
+    crontab $dossier_config/mon_cron.txt
+    rm -f $dossier_config/mon_cron.txt
     eval 'echo "-- Cron mis à jour"' $mon_log_perso
   else
     eval 'echo -e "\e[101mLE SCRIPT EST PRÉSENT DANS LE CRON\e[0m"' $mon_log_perso
@@ -434,7 +425,8 @@ for repo in $required_repos ; do
       add-apt-repository $repo -y
       update_a_faire="1"
     else
-      eval 'echo -e "[\e[42m\u2713 \e[0m] Le dépôt apt: "$repo" est installé"' $mon_log_perso
+      source $mon_script_langue
+      eval 'echo -e "$mui_required_repository"' $mon_log_perso
     fi
 done
 if [[ "$update_a_faire" == "1" ]]; then
@@ -447,7 +439,8 @@ for tools in $required_tools ; do
     if [[ "$check_tool" == "" ]]; then
       apt-get install $tools -y
     else
-      eval 'echo -e "[\e[42m\u2713 \e[0m] La dépendance: "$tools" est installée"' $mon_log_perso
+      source $mon_script_langue
+      eval 'echo -e "$mui_required_apt"' $mon_log_perso
     fi
 done
  
@@ -457,7 +450,8 @@ for tools_pip in $required_tools_pip ; do
     if [[ "$check_tool" == "" ]]; then
       pip install $tools_pip
     else
-      eval 'echo -e "[\e[42m\u2713 \e[0m] La dépendance: "$tools_pip" est installée"' $mon_log_perso
+      source $mon_script_langue
+      eval 'echo -e "$mui_required_pip"' $mon_log_perso
     fi
 done
  
@@ -544,14 +538,14 @@ if [[ ! -f "$dossier_config/rcon" ]] ; then
   while kill -0 $pid 2>/dev/null
   do
     i=$(( (i+1) %4 ))
-    printf "\r[  ] Installation de la dépendance rcon ... ${spin:$i:1}"
+    printf "\r$mui_required_install rcon ... ${spin:$i:1}"
     sleep .1
   done
   rm $dossier_config/rcon.c > /dev/null
   printf "$mon_printf" && printf "\r"
-  eval 'echo -e "[\e[42m\u2713 \e[0m] La dépendance: rcon est installée"' $mon_log_perso
+  eval 'echo -e "$mui_required_rcon"' $mon_log_perso
 else
-  eval 'echo -e "[\e[42m\u2713 \e[0m] La dépendance: rcon est installée"' $mon_log_perso
+  eval 'echo -e "$mui_required_rcon"' $mon_log_perso
 fi
  
 #### vérification de la présence de 'discord.sh'
@@ -564,13 +558,13 @@ if [[ ! -f "$emplacement_script_discord" ]] ; then
   while kill -0 $pid 2>/dev/null
   do
     i=$(( (i+1) %4 ))
-    printf "\r[  ] Installation de la dépendance discord.sh ... ${spin:$i:1}"
+    printf "\r$mui_required_install discord.sh ... ${spin:$i:1}"
     sleep .1
   done
   printf "$mon_printf" && printf "\r"
-  eval 'echo -e "[\e[42m\u2713 \e[0m] La dépendance: discord.sh est installée"' $mon_log_perso
+  eval 'echo -e "$mui_required_discord"' $mon_log_perso
 else
-  eval 'echo -e "[\e[42m\u2713 \e[0m] La dépendance: discord.sh est installée"' $mon_log_perso
+  eval 'echo -e "$mui_required_discord"' $mon_log_perso
 fi
  
 config_discord="oui"
