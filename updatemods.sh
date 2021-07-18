@@ -423,9 +423,6 @@ chemin_serveur=""
 #### Version des mods à installer : Windows ou Linux
 mod_branch="Windows"
 
-#### Compte utilisateur à utiliser
-user_arkserver=""
-
 #### Paramètre du push
 ## ces réglages se trouvent sur le site http://www.pushover.net
 token_app=""
@@ -1127,7 +1124,9 @@ if [[ "$restart_necessaire" == "oui" ]]; then
   restart="non"
   ### Création du script de reboot du serveur
   chmod 777 -R "$chemin_serveur"
-  chown $user_arkserver:$user_arkserver -R "$chemin_serveur"
+  user_arkserver=`stat -c "%U" "$chemin_serveur"`
+  group_arkserver=`stat -c "%G" "$chemin_serveur"`
+  chown $user_arkserver:$group_arkserver -R "$chemin_serveur"
   numero_serveur=0
   while [[ $numero_serveur != $nombre_serveur ]]; do
     process_arkserver=`ps aux | sed '/tmux/d' | grep -i "./ShooterGameServer \(/Game/Mods/.*/${map_serveurs[$numero_serveur]}\|${map_serveurs[$numero_serveur]}\)" | grep "?Port=${port_serveurs[$numero_serveur]}?" | sed '/grep/d' | awk '{print $2}'`
