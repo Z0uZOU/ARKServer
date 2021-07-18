@@ -95,6 +95,7 @@ mui_purge_log_ko="Une erreur est survenue, veuillez contacter le développeur."
 
 ## Spécifique à ce script
 mui_required_install="[  ] Installation de la dépendance"
+mui_required_update="[  ] Mise à jour de la dépendance"
 mui_required_rcon="[\e[42m\u2713 \e[0m] La dépendance: rcon est installée"
 mui_required_discord="[\e[42m\u2713 \e[0m] La dépendance: discord.sh est installée"
 mui_section_mods_download="TELECHARGEMENTS DES MODS"

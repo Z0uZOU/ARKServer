@@ -597,6 +597,21 @@ if [[ ! -f "$emplacement_script_discord" ]] ; then
   printf "$mon_printf" && printf "\r"
   eval 'echo -e "$mui_required_discord"' $mon_log_perso
 else
+  distant_md5=`curl -s "https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/prerequisites/discord.sh" | md5sum | cut -f1 -d" "`
+  local_md5=`md5sum "$emplacement_script_discord" 2>/dev/null | cut -f1 -d" "`
+  if [[ $distant_md5 != $local_md5 ]]; then
+    wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/prerequisites/discord.sh -O $emplacement_script_discord && sed -i -e 's/\r//g' $emplacement_script_discord && chmod +x $emplacement_script_discord &
+    pid=$!
+    spin='-\|/'
+    i=0
+    while kill -0 $pid 2>/dev/null
+    do
+      i=$(( (i+1) %4 ))
+      printf "\r$mui_required_update discord.sh ... ${spin:$i:1}"
+      sleep .1
+    done
+    printf "$mon_printf" && printf "\r"
+  fi
   eval 'echo -e "$mui_required_discord"' $mon_log_perso
 fi
 
