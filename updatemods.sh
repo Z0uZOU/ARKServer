@@ -18,6 +18,7 @@ script_cron="0 * * * *" #ne définir que la planification
 verification_process="" #si ces process sont détectés on ne notifie pas (ou ne lance pas en doublon)
 ########################
 
+
 #### Initialisation des variables
 debug="non"
 force_dl="non"
@@ -26,14 +27,18 @@ force_copy="non"
 no_update="non"
 
 
+#### Vérification de la présence du Net
+md5_404_not_found=`curl -s "https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/404" | md5sum  | cut -f1 -d" "`
+
+
 #### Vérification de la langue du system
 if [[ "$@" =~ "--langue=" ]]; then
   affichage_langue=`echo "$@" | sed 's/.*--langue=//' | sed 's/ .*//' | tr '[:upper:]' '[:lower:]'`
 else
   affichage_langue=$(locale | grep LANG | sed -n '1p' | cut -d= -f2 | cut -d_ -f1)
 fi
-verif_langue=`curl -s "https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/MUI/$affichage_langue.lang"`
-if [[ "$verif_langue" == "404: Not Found" ]]; then
+verif_langue=`curl -s "https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/MUI/$affichage_langue.lang" | md5sum  | cut -f1 -d" "`
+if [[ "$verif_langue" == "$md5_404_not_found" ]]; then
   affichage_langue="en"
 fi
 
@@ -123,7 +128,6 @@ for process_travail in $verification_process ; do
   fi
 done
 
-
 #### Tests des arguments
 for parametre in $@; do
   if [[ "$parametre" == "--debug" ]]; then
@@ -159,7 +163,12 @@ for parametre in $@; do
     exit 1
   fi
   if [[ "$parametre" == "--extra-log" ]]; then
-    mon_log_perso="| tee -a $mon_fichier_log"
+    date_log=`date +%Y%m%d`
+    heure_log=`date +%H%M`
+    path_log=`echo "/root/.config/"$mon_script_base"/log/"$date_log`
+    mkdir -p $path_log 2>/dev/null
+    fichier_log_perso=`echo $path_log"/"$heure_log".log"`
+    mon_log_perso="| tee -a $fichier_log_perso"
   fi
   if [[ "$parametre" == "--purge-process" ]]; then
     pgrep -x "$mon_script_fichier" | xargs kill -9
@@ -218,7 +227,6 @@ if [[ -d "$dossier_config" ]]; then
 else
   mkdir -p $dossier_config
 fi
-
 if [[ -f "$mon_script_config" ]] ; then
   source $mon_script_config
 else
@@ -251,8 +259,8 @@ if [[ "$maj_force" == "non" ]] ; then
   if [[ -f "$mon_script_pid" ]] ; then
     computer_name=`hostname`
     source $mon_script_langue
-    echo "$mui_pid_check"
-    push-message "$mui_pid_check_title" "$mui_pid_check" "1"
+    echo "$mui_pid_check_message"
+    push-message "$mui_pid_check_title" "$mui_pid_check_message" "1"
     exit 1
   fi
 fi
@@ -263,8 +271,10 @@ touch $mon_script_pid
 ## necessaire pour le mettre dans le cron
 cd /opt/scripts
 
+
 #### Indispensable aux messages de chargement
 mon_printf="\r                                                                                                                                "
+
 
 #### Nettoyage obligatoire et push pour annoncer la maj
 if [[ -f "$mon_script_updater" ]] ; then
@@ -278,28 +288,38 @@ fi
 #### Vérification de version pour éventuelle mise à jour
 distant_md5=`curl -s "$script_github" | md5sum | cut -f1 -d" "`
 local_md5=`md5sum "$0" 2>/dev/null | cut -f1 -d" "`
-if [[ $distant_md5 != $local_md5 ]]; then
-  eval 'echo -e "$mui_update_available"' $mon_log_perso
-  if [[ "$no_update" == "non" ]]; then
-    eval 'echo -e "$mui_update_download"' $mon_log_perso
-    touch $mon_script_updater
-    chmod +x $mon_script_updater
-    echo "#!/bin/bash" >> $mon_script_updater
-    mon_script_fichier_temp=`echo $mon_script_fichier"-temp"`
-    echo "wget -q $script_github -O $mon_script_fichier_temp" >> $mon_script_updater
-    echo "sed -i -e 's/\r//g' $mon_script_fichier_temp" >> $mon_script_updater
-    echo "mv $mon_script_fichier_temp $mon_script_fichier" >> $mon_script_updater
-    echo "chmod +x $mon_script_fichier" >> $mon_script_updater
-    echo "chmod 777 $mon_script_fichier" >> $mon_script_updater
-    echo "$mui_update_done" >> $mon_script_updater
-    echo "bash $mon_script_fichier $@" >> $mon_script_updater
-    echo "exit 1" >> $mon_script_updater
-    rm "$mon_script_pid"
-    bash $mon_script_updater
-    exit 1
-  else
-    eval 'echo -e "$mui_update_not_downloaded"' $mon_log_perso
+if [[ "$md5_404_not_found" != "$distant_md5" ]];then
+  if [[ "$distant_md5" != "$local_md5" ]]; then
+    eval 'echo -e "$mui_update_available"' $mon_log_perso
+    if [[ "$no_update" == "non" ]]; then
+      eval 'echo -e "$mui_update_download"' $mon_log_perso
+      touch $mon_script_updater
+      chmod +x $mon_script_updater
+      echo "#!/bin/bash" >> $mon_script_updater
+      mon_script_fichier_temp=`echo $mon_script_fichier"-temp"`
+      echo "wget -q $script_github -O $mon_script_fichier_temp" >> $mon_script_updater
+      echo "sed -i -e 's/\r//g' $mon_script_fichier_temp" >> $mon_script_updater
+      echo "mv $mon_script_fichier_temp $mon_script_fichier" >> $mon_script_updater
+      echo "chmod +x $mon_script_fichier" >> $mon_script_updater
+      echo "chmod 777 $mon_script_fichier" >> $mon_script_updater
+      echo "$mui_update_done" >> $mon_script_updater
+      echo "bash $mon_script_fichier $@" >> $mon_script_updater
+      echo "exit 1" >> $mon_script_updater
+      rm "$mon_script_pid"
+      bash $mon_script_updater
+      exit 1
+    else
+      eval 'echo -e "$mui_update_not_downloaded"' $mon_log_perso
+    fi
   fi
+else
+  my_title_count=`echo -n "$mui_no_connection" | sed "s/\\\e\[[0-9]\{1,2\}m//g" | wc -c`
+  line_lengh="78"
+  before_count=$((($line_lengh-$my_title_count)/2))
+  after_count=$(((($line_lengh-$my_title_count)%2)+$before_count))
+  before=`eval printf "%0.s-" {1..$before_count}`
+  after=`eval printf "%0.s-" {1..$after_count}`
+  eval 'printf "\e[101m%s%s%s\e[0m\n" "$before" "$mui_no_connection" "$after"' $mon_log_perso
 fi
 source $mon_script_langue
 my_title_count=`echo -n "$mui_title" | sed "s/\\\e\[[0-9]\{1,2\}m//g" | wc -c`
@@ -343,6 +363,7 @@ else
   rm -f $dossier_config/mon_cron.txt
 fi
 
+
 #### Mise en place éventuelle d'un cron
 if [[ "$script_cron" != "" ]]; then
   mon_cron=`crontab -l`
@@ -383,6 +404,7 @@ if [[ "$script_cron" != "" ]]; then
     fi
   fi
 fi
+
 
 #### Vérification/création du fichier conf
 if [[ -f $mon_script_config ]] ; then
@@ -443,12 +465,13 @@ EOT
   rm $pid_script
   exit 1
 fi
-
 echo "------------------------------------------------------------------------------"
+
 
 #### VERIFICATION DES DEPENDANCES
 ##########################
 eval 'printf  "\e[44m\u2263\u2263  \e[0m \e[44m \e[1m %-62s  \e[0m \e[44m  \e[0m \e[44m \e[0m \e[34m\u2759\e[0m\n" "$mui_section_dependencies"' $mon_log_perso
+
 
 #### Vérification et installation des repositories (apt)
 for repo in $required_repos ; do
@@ -466,6 +489,7 @@ if [[ "$update_a_faire" == "1" ]]; then
   apt update
 fi
 
+
 #### Vérification et installation des outils requis si besoin (apt)
 for tools in $required_tools ; do
   check_tool=`dpkg --get-selections | grep -w "$tools"`
@@ -477,6 +501,7 @@ for tools in $required_tools ; do
     fi
 done
 
+
 #### Vérification et installation des outils requis si besoin (pip)
 for tools_pip in $required_tools_pip ; do
   check_tool=`pip freeze | grep "$tools_pip"`
@@ -487,6 +512,7 @@ for tools_pip in $required_tools_pip ; do
       eval 'echo -e "$mui_required_pip"' $mon_log_perso
     fi
 done
+
 
 #### Ajout de ce script dans le menu
 if [[ -f "/etc/xdg/menus/applications-merged/scripts-scoony.menu" ]] ; then
@@ -556,11 +582,12 @@ Categories=X-scripts-scoony;
 EOT
 fi
 
+
 ####################
 ## On commence enfin
 ####################
-
 cd /opt/scripts
+
 
 #### vérification de la présence de 'rcon'
 if [[ ! -f "$dossier_config/rcon" ]] ; then
@@ -581,6 +608,7 @@ else
   eval 'echo -e "$mui_required_rcon"' $mon_log_perso
 fi
 
+
 #### vérification de la présence de 'discord.sh'
 emplacement_script_discord="/opt/scripts/discord.sh"
 if [[ ! -f "$emplacement_script_discord" ]] ; then
@@ -597,21 +625,6 @@ if [[ ! -f "$emplacement_script_discord" ]] ; then
   printf "$mon_printf" && printf "\r"
   eval 'echo -e "$mui_required_discord"' $mon_log_perso
 else
-  distant_md5=`curl -s "https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/prerequisites/discord.sh" | md5sum | cut -f1 -d" "`
-  local_md5=`md5sum "$emplacement_script_discord" 2>/dev/null | cut -f1 -d" "`
-  if [[ $distant_md5 != $local_md5 ]]; then
-    wget -q https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/prerequisites/discord.sh -O $emplacement_script_discord && sed -i -e 's/\r//g' $emplacement_script_discord && chmod +x $emplacement_script_discord &
-    pid=$!
-    spin='-\|/'
-    i=0
-    while kill -0 $pid 2>/dev/null
-    do
-      i=$(( (i+1) %4 ))
-      printf "\r$mui_required_update discord.sh ... ${spin:$i:1}"
-      sleep .1
-    done
-    printf "$mon_printf" && printf "\r"
-  fi
   eval 'echo -e "$mui_required_discord"' $mon_log_perso
 fi
 
@@ -627,6 +640,7 @@ if [[ ! -f "/opt/scripts/.webhook" ]]; then
 else
   eval 'echo -e "[\e[42m\u2713 \e[0m] Utilisation du script \"discord.sh\": le fichier \".webhook\" est présent, les notifications sur Discord seront envoyées"' $mon_log_perso
 fi
+
 
 ### Déclaration des variables pour les couleurs des textes
 GREEN="\\033[1;32m"
