@@ -749,6 +749,21 @@ fi
 rm -f rcon_* 2>/dev/null
 nombre_serveur=`echo ${#map_serveurs[@]}`
 
+
+curl -s GET 'https://api.steamcmd.net/v1/info/376030' > $dossier_config/steamdb.log &
+pid=$!
+spin='-\|/'
+i=0
+while kill -0 $pid 2>/dev/null
+do
+  i=$(( (i+1) %4 ))
+  printf "\r[  ] Vérification de la version du serveur sur SteamCMD.net ... ${spin:$i:1}"
+  sleep .1
+done
+availablebuild=`cat "$dossier_config/steamdb.log" | sed 's/.*\"branches\"://' | sed 's/.*\"public\"://' | sed 's/,.*//' | cut -d' ' -f3 | sed 's/\"//g'`
+printf "$mon_printf" && printf "\r"
+rm $dossier_config/steamdb.log
+
 #url_steamdb="https://steamdb.info/app/376030/depots"
 #wget -q --timeout=2 --waitretry=0 --tries=2  "$url_steamdb" -O "$dossier_config/steamdb.log" &
 #pid=$!
@@ -764,23 +779,23 @@ nombre_serveur=`echo ${#map_serveurs[@]}`
 #availablebuild=`cat "$dossier_config/steamdb.log" | grep "href=\"/patchnotes/" | grep "rel=\"nofollow\">" | sed -n 1p | sed 's|.*/patchnotes/||' | sed -e 's|/".*||'`
 #rm $dossier_config/steamdb.log
 
-rm -rf ~/.steam/appcache
-availablebuild=""
-while [[ "$availablebuild" == "" ]]; do
-  steamcmd +login anonymous +app_info_update 1 +app_info_print 376030 +quit 2>/dev/null > $dossier_config/availablebuild.log &
-  pid=$!
-  spin='-\|/'
-  i=0
-  while kill -0 $pid 2>/dev/null
-  do
-    i=$(( (i+1) %4 ))
-    printf "\r[  ] Vérification de la version du serveur disponible ... ${spin:$i:1}"
-    sleep .1
-  done
-  availablebuild=`cat $dossier_config/availablebuild.log | grep -EA 1000 "^\s+\"branches\"$" | grep -EA 5 "^\s+\"public\"$" | grep -m 1 -EB 10 "^\s+}$" | grep -E "^\s+\"buildid\"\s+" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d' ' -f3`
-done
-printf "$mon_printf" && printf "\r"
-rm $dossier_config/availablebuild.log
+#rm -rf ~/.steam/appcache
+#availablebuild=""
+#while [[ "$availablebuild" == "" ]]; do
+#  steamcmd +login anonymous +app_info_update 1 +app_info_print 376030 +quit 2>/dev/null > $dossier_config/availablebuild.log &
+#  pid=$!
+#  spin='-\|/'
+#  i=0
+#  while kill -0 $pid 2>/dev/null
+#  do
+#    i=$(( (i+1) %4 ))
+#    printf "\r[  ] Vérification de la version du serveur disponible ... ${spin:$i:1}"
+#    sleep .1
+#  done
+#  availablebuild=`cat $dossier_config/availablebuild.log | grep -EA 1000 "^\s+\"branches\"$" | grep -EA 5 "^\s+\"public\"$" | grep -m 1 -EB 10 "^\s+}$" | grep -E "^\s+\"buildid\"\s+" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d' ' -f3`
+#done
+#printf "$mon_printf" && printf "\r"
+#rm $dossier_config/availablebuild.log
 
 maj_serveur="non"
 if [ -n "$nom_serveur" ] && [ -n "$chemin_serveur" ]; then
