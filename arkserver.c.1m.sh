@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-version="0.0.0.15"
+version="0.0.0.16"
 
 
 #### Mes paramètres
@@ -153,6 +153,8 @@ if [[ ! -f "$icons_cache/ARK-SE.png" ]] ; then curl -o "$icons_cache/ARK-SE.png"
 if [[ ! -f "$icons_cache/ARK-Ab.png" ]] ; then curl -o "$icons_cache/ARK-Ab.png" "https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/.cache-icons/ARK-Ab.png" ; fi
 if [[ ! -f "$icons_cache/ARK-Ragnarok.png" ]] ; then curl -o "$icons_cache/ARK-Ragnarok.png" "https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/.cache-icons/ARK-Ragnarok.png" ; fi
 if [[ ! -f "$icons_cache/ARK-Extinction.png" ]] ; then curl -o "$icons_cache/ARK-Extinction.png" "https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/.cache-icons/ARK-Extinction.png" ; fi
+if [[ ! -f "$icons_cache/ARK-Gen.png" ]] ; then curl -o "$icons_cache/ARK-Gen.png" "https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/.cache-icons/ARK-Gen.png" ; fi
+if [[ ! -f "$icons_cache/ARK-Gen2.png" ]] ; then curl -o "$icons_cache/ARK-Gen2.png" "https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/.cache-icons/ARK-Gen2.png" ; fi
 if [[ ! -f "$icons_cache/TS.png" ]] ; then curl -o "$icons_cache/TS.png" "https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/.cache-icons/TS.png" ; fi
 if [[ ! -f "$icons_cache/CrossArkChat.png" ]] ; then curl -o "$icons_cache/CrossArkChat.png" "https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/.cache-icons/CrossArkChat.png" ; fi
 if [[ ! -f "$icons_cache/settings.png" ]] ; then curl -o "$icons_cache/settings.png" "https://raw.githubusercontent.com/Z0uZOU/ARKServer/master/.cache-icons/settings.png" ; fi
@@ -167,6 +169,8 @@ ARKSERVER_ARK_SE=$(curl -s "file://$icons_cache/ARK-SE.png" | base64 -w 0)
 ARKSERVER_ARK_Ab=$(curl -s "file://$icons_cache/ARK-Ab.png" | base64 -w 0)
 ARKSERVER_ARK_Ragnarok=$(curl -s "file://$icons_cache/ARK-Ragnarok.png" | base64 -w 0)
 ARKSERVER_ARK_Extinction=$(curl -s "file://$icons_cache/ARK-Extinction.png" | base64 -w 0)
+ARKSERVER_ARK_Gen=$(curl -s "file://$icons_cache/ARK-Gen.png" | base64 -w 0)
+ARKSERVER_ARK_Gen2=$(curl -s "file://$icons_cache/ARK-Gen2.png" | base64 -w 0)
 ARKSERVER_TS=$(curl -s "file://$icons_cache/TS.png" | base64 -w 0)
 ARKSERVER_CROSSARKCHAT=$(curl -s "file://$icons_cache/CrossArkChat.png" | base64 -w 0)
 SETTINGS_ICON=$(curl -s "file://$icons_cache/settings.png" | base64 -w 0)
@@ -290,7 +294,7 @@ if [[ "$chemin_serveur" != "" ]]; then
         fi
       fi
       #server_admin_password_serveurs+=("$server_admin_password")
-      process_arkserver=`ps aux | sed '/tmux/d' | grep "./ShooterGameServer -i \(/Game/Mods/.*/${map_serveurs[$numero_serveur]}\|${map_serveurs[$numero_serveur]}\)" | grep "?Port=${port_serveurs[$numero_serveur]}?" | sed '/grep/d' | awk '{print $2}'`
+      process_arkserver=`ps aux | sed '/tmux/d' | grep -i "./ShooterGameServer -i \(/Game/Mods/.*/${map_serveurs[$numero_serveur]}\|${map_serveurs[$numero_serveur]}\)" | grep "?Port=${port_serveurs[$numero_serveur]}?" | sed '/grep/d' | awk '{print $2}'`
       if [[ "$process_arkserver" != "" ]]; then
         mn_actuelle=`date +"%M"`
         if [[ "$mn_actuelle" == "00" ]] || [[ "$mn_actuelle" == "10" ]] || [[ "$mn_actuelle" == "20" ]] || [[ "$mn_actuelle" == "30" ]] || [[ "$mn_actuelle" == "40" ]] || [[ "$mn_actuelle" == "50" ]] || [[ ! -f "$HOME/.config/argos/arkserver/rcon_$numero_serveur.txt" ]]; then
@@ -436,7 +440,18 @@ while [[ $numero_serveur != $nombre_serveur ]]; do
   if [[ "${map_serveurs[$numero_serveur]}" == "Valguero_P" ]]; then
     arkserver_nom_map="Valguero"
   fi
-  if [[ "${map_serveurs[$numero_serveur]}" == "Viking_P" ]]; then
+  if [[ "${map_serveurs[$numero_serveur]}" == "CrystalIsles" ]]; then
+    arkserver_nom_map="Crystal Isles"
+  fi
+  if [[ "${map_serveurs[$numero_serveur]}" == "Genesis" ]]; then
+    ARK_SERVER_ICON=$ARKSERVER_ARK_Gen
+    arkserver_nom_map="Genesis: Part 1"
+  fi
+  if [[ "${map_serveurs[$numero_serveur]}" == "Gen2" ]]; then
+    ARK_SERVER_ICON=$ARKSERVER_ARK_Gen2
+    arkserver_nom_map="Genesis: Part 2"
+  fi
+  if [[ "${map_serveurs[$numero_serveur]}" == "Viking_P" ]]  || [[ "${map_serveurs[$numero_serveur]}" == "Fjordur" ]]; then
     arkserver_nom_map="Fjordur"
   fi
   process_arkserver=`ps aux | sed '/tmux/d' | grep -i "./ShooterGameServer \(/Game/Mods/.*/${map_serveurs[$numero_serveur]}\|${map_serveurs[$numero_serveur]}\)" | grep "?Port=${port_serveurs[$numero_serveur]}?" | sed '/grep/d' | awk '{print $2}'`
